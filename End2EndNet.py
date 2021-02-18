@@ -1,13 +1,11 @@
-import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torchsummary
 from data_loader import SinglePredDatasetTrain
-from data_loader import SinglePredDatasetTest
 from torch.utils.data import DataLoader
 import math
-PATH = 'E2E_1Step_best.pth'
+PATH = 'E2E_v3.pth'
 
 
 class Chomp1d(nn.Module):
@@ -81,58 +79,19 @@ class E2ESingleStepTCN(nn.Module):
         self.tconv4 = TConvBlock(P + int(L/2), 32, 64, K, d)
         self.bn4 = torch.nn.BatchNorm1d(64)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 64, 64, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(64)
-        self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P, 64, 6, K, d)
-
-
+        self.tconv5 = TConvBlock(P, 64, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
-
-        x = self.tconv1(input)
-        x = self.bn1(x)
-        x = self.relu1(x)
-        x = self.tconv2(x)
-        x = self.bn2(x)
-        x = self.relu2(x)
+        # print(input.shape)
+        x = self.relu1(self.bn1(self.tconv1(input)))
+        x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x[:, :, int(self.L/2):])))
         x = self.relu4(self.bn4(self.tconv4(x)))
-        x = self.relu5(self.bn5(self.tconv5(x[:, :, int(self.L/2):])))
-        x = self.tconv6(x)
+        x = self.tconv5(x[:, :, int(self.L/2):])
+        # print(x.shape)
         return x
 
-# In construction
-# class QuadrotorDynamics(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self.rates_net = E2ESingleStepTCN()
-#
-#     def forward(self, t, input):
-#         state = torch.transpose(input[:, :, -2], 0, 1)
-#         ang = state[0:3, 0]
-#         rate = state[6:9, :]
-#         vel = state[9:12, :]
-#
-#         rates = self.rates_net(input)
-#         rate_dot = rates[:3, :]
-#         vel_dot = rates[3:, :]
-#
-#         # Calculate rotation matrix
-#         s_phi = (torch.sin(ang[0])).item()
-#         c_phi = (torch.cos(ang[0])).item()
-#         c_theta = (torch.cos(ang[1])).item()
-#
-#         M = torch.tensor([[1, 0, -s_phi], [0, c_phi, s_phi * c_theta], [0, -s_phi, c_theta * c_phi]])
-#
-#         m_inv = torch.inverse(M)
-#         ang_dot = torch.mm(m_inv, rate)
-#
-#         state_dot = torch.transpose(torch.cat([ang_dot, vel, rate_dot, vel_dot, torch.zeros((4, 1))]), 0, 1)
-#         output = torch.zeros(input.shape)
-#         output[:, :, -2] = state_dot
-#         return output
 
 def train_model():
     lr = 0.001
@@ -140,9 +99,8 @@ def train_model():
     epochs = 30
     bs = 16
     L =64
-    P = 20
+    P = 60
     tv_set = SinglePredDatasetTrain('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
-    # datapoint = test_set[426]
 
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
@@ -152,11 +110,10 @@ def train_model():
     print("Data Loaded Successfully")
 
     net = E2ESingleStepTCN(L, P)
-    # torchsummary.summary(net, (16, 84))
+    # torchsummary.summary(net, (16, 124))
 
     loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
-    params = list(net.parameters())
-    optimizer = torch.optim.Adam(params, lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
+    optimizer = torch.optim.Adam(list(net.parameters()), lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
 
     train_loss = []
     val_loss = []
@@ -165,10 +122,10 @@ def train_model():
 
     print("Training Length: {}".format(int(train_len / bs)))
     for epoch in range(1, epochs + 1):
-        # Training
         print("Training")
         net.train(True)
         epoch_train_loss = 0
+        moving_av = 0
         i = 0
 
         for data in train_loader:
@@ -184,13 +141,15 @@ def train_model():
             pred = net(input)  # Forward Pass
             minibatch_loss = loss(pred, output)  # Compute loss
             epoch_train_loss += minibatch_loss.item() / train_len
+            moving_av += loss.item()
 
             minibatch_loss.backward()  # Backpropagation
             optimizer.step()  # Optimization
             i += 1
-            if i % 200 == 0:
-                print(i)
-                print(minibatch_loss)
+            if i % 50 == 0:
+                print("Training {}% finished".format(round(100 * i / train_len, 4)))
+                print(moving_av / 50)
+                moving_av = 0
 
         train_loss.append(epoch_train_loss)
         print("Training Error for this Epoch: {}".format(epoch_train_loss))
@@ -216,11 +175,11 @@ def train_model():
                 minibatch_loss = loss(pred, output)  # Compute loss
                 epoch_val_loss += minibatch_loss.item() / val_len
                 i += 1
-                if i % 40 == 0:
+                if i % 100 == 0:
                     print(i)
 
             val_loss.append(epoch_val_loss)
-            print(epoch_val_loss)
+            print("Validation Loss: {}".format(epoch_val_loss))
             if best_epoch == 0 or epoch_val_loss < best_loss:
                 best_loss = epoch_val_loss
                 best_epoch = epoch
@@ -232,7 +191,7 @@ def train_model():
             plt.xlabel("Epoch")
             plt.ylabel("MSE Loss")
             plt.legend(["Training Loss", "Validation Loss"])
-            plt.savefig("E2E_1Step_losses_intermediate.png")
+            plt.savefig("E2E_v3_train_intermediate.png")
             plt.show()
 
     print("Training Complete")
@@ -244,42 +203,9 @@ def train_model():
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["Training Loss", "Validation Loss"])
-    plt.savefig("E2E_1Step_losses.png")
+    plt.savefig("E2E_v3_train.png")
     plt.show()
 
-def test_model():
-    bs = 1
-    test_set = SinglePredDatasetTest('data/AscTec_Pelican_Flight_Dataset.mat', 64, 1)
-    # datapoint = test_set[426]
-
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    print("Data Loaded Successfully")
-
-    net = E2ESingleStepTCN()
-    net.load_state_dict(torch.load(PATH))
-    net.train(False)
-    net.eval()
-
-    loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
-
-    test_loss = []
-    i=0
-    with torch.no_grad():
-        for data in test_loader:
-            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
-            output = label[:, :6, 0]
-            feedforward = torch.zeros(label.shape)
-            feedforward[:, 6:, :] = label[:, 6:, :]
-            input = torch.cat((input, feedforward), 2)
-            pred = net(input)  # Forward Pass
-            minibatch_loss = loss(pred, output)  # Compute loss
-            test_loss.append(minibatch_loss)
-            i += 1
-            if i % 40 == 0:
-                print(i)
-    np.savetxt("test_loss.csv", test_loss)
 
 if __name__ == "__main__":
     train_model()
-    # test_model()

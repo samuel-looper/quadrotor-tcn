@@ -13,43 +13,52 @@ PATH = './motor_hybrid.pth'
 
 class MotorHybrid(nn.Module):
     # Deep Neural Network for motor thrust prediction
-    def __init__(self):
+    def __init__(self, lookback, pred_steps):
         super(MotorHybrid, self).__init__()
-        L = 64
+        L = lookback
+        P = pred_steps
         K = 8
         d = 2
-        self.tconv1 = TConvBlock(L, 10, 10, K, d)
-        self.bn1 = torch.nn.BatchNorm1d(10)
+        t = 54
+        self.L = L
+        self.P = P
+        self.t = t
+        self.tconv1 = TConvBlock(L + P, 16, 16, K, d)
+        self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L, 10, 10, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(10)
+        self.tconv2 = TConvBlock(L + P, 16, 32, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(32)
         self.relu2 = torch.nn.ReLU()
-
-        self.fc1 = torch.nn.Linear(L * 10, 128)
+        self.tconv3 = TConvBlock(L + P, 32, 32, K, d)
+        self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-
-        self.fc2 = torch.nn.Linear(128 + 4, 4)
+        self.tconv4 = TConvBlock(t, 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(t, 32, 16, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(16)
+        self.relu5 = torch.nn.ReLU()
+        self.fc1 = torch.nn.Linear(t * 16, 128)
+        self.relu6 = torch.nn.ReLU()
+        self.fc2 = torch.nn.Linear(128, 4)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
-        x_init = input[:, 6:, :-1]
-        # numpy_input = x_init.numpy()
-        # plt.plot(numpy_input[0, 0, :])
-        # plt.show()
-        ff = input[:, 12:, -1]
-
-        x = self.relu1(self.bn1(self.tconv1(x_init)))
-        x = self.bn1(self.tconv1(x))
-        x = self.relu2(x + x_init)
+        # print(input.shape)
+        x = self.relu1(self.bn1(self.tconv1(input)))
+        x = self.relu2(self.bn2(self.tconv2(x)))
+        x = self.relu3(self.bn3(self.tconv3(x)))
+        x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
+        x = self.relu5(self.bn5(self.tconv5(x)))
         x = torch.flatten(x, 1, 2)
-        x = self.relu3(self.fc1(x))
-        x = self.fc2(torch.cat((x, ff), 1))
-        x += torch.ones(x.shape) * (9.8067 / 4)
+        x = self.relu6(self.fc1(x))
+        # print(x.shape)
+        x = self.fc2(x)
         return x
 
 
 class QuadrotorDynamics(nn.Module):
-    def __init__(self, l, m, d, kt, kr, ixx, iyy, izz):
+    def __init__(self, l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps):
         super().__init__()
         self.l = l
         self.m = m
@@ -57,7 +66,7 @@ class QuadrotorDynamics(nn.Module):
         self.kt = kt
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
-        self.motor_net = MotorHybrid()
+        self.motor_net = MotorHybrid(lookback, pred_steps)
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
@@ -69,7 +78,6 @@ class QuadrotorDynamics(nn.Module):
         # update thrusts
         thrusts = torch.transpose(self.motor_net(input), 0, 1)
 
-
         # update torques
         torques = torch.mm(self.torque_mat, thrusts)
 
@@ -77,6 +85,7 @@ class QuadrotorDynamics(nn.Module):
         ang = state[0:3, 0]
         rate = state[6:9, :]
         vel = state[9:12, :]
+
         # Calculate rotation matrix
         s_phi = (torch.sin(ang[0])).item()
         c_phi = (torch.cos(ang[0])).item()
@@ -90,9 +99,6 @@ class QuadrotorDynamics(nn.Module):
              [c_theta * s_psi, s_psi * s_theta * s_phi + c_phi * c_psi, c_phi * s_psi * s_theta - s_phi * c_psi],
              [-s_theta, c_theta * s_phi, c_theta * c_phi]])
 
-        # gravity_comp = torch.mm(torch.inverse(rbi), self.m * self.g)
-        # grav_torque = torch.zeros(torques.shape)
-        # grav_torque[0] = gravity_comp[2]
         # Calculate M matrix
         M = torch.tensor([[1, 0, -s_phi], [0, c_phi, s_phi * c_theta], [0, -s_phi, c_theta * c_phi]])
 
@@ -105,6 +111,7 @@ class QuadrotorDynamics(nn.Module):
         state_dot = torch.transpose(torch.cat([ang_dot, vel, rate_dot, vel_dot, torch.zeros((4, 1))]), 0, 1)
         output = torch.zeros(input.shape)
         output[:, :, -2] = state_dot
+
         return output
 
 
@@ -133,9 +140,8 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
 
-    func = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz)
-    params = list(func.parameters())
-    optimizer = optim.Adam(params, lr=lr)
+    func = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    optimizer = optim.Adam(list(func.parameters()), lr=lr)
     loss_f = nn.MSELoss()
     train_loss = []
     val_loss = []
@@ -144,11 +150,11 @@ if __name__ == "__main__":
     print("Training Length: {}".format(int(train_len / bs)))
 
     for epoch in range(1, epochs + 1):
-        # Training
         print("Training")
         func.train(True)
         epoch_train_losses = []
         epoch_train_loss = 0
+        moving_av = 0
         epoch_val_losses = []
         i = 0
 
@@ -164,29 +170,17 @@ if __name__ == "__main__":
             pred = output[1, 0, 6:12, -2]
             loss = loss_f(pred, output_gt)
             epoch_train_loss += loss.item() / train_len
+            moving_av += loss.item()
+
             if loss.requires_grad:
                 loss.backward()
             optimizer.step()
 
-            # def closure():
-            #     output = odeint(func, input, torch.tensor([0, 0.01]))
-            #     pred = output[1, 0, 6:12, -2]
-            #     loss = loss_f(pred, output_gt)
-            #     epoch_train_losses.append(loss.item())
-            #     if loss.requires_grad:
-            #         loss.backward()
-            #     # if loss.item() > 50:
-            #     #     print("outlier")
-            #     return loss
-            #
-            # optimizer.step(closure)
             i += 1
-
             if i % 50 == 0:
-                print("Training {}% finished".format(round(100*i/train_len, 4)))
-                print(epoch_train_loss*train_len/i)
-                # break
-                # print(minibatch_loss)
+                print("Training {}% finished".format(round(100 * i / train_len, 4)))
+                print(moving_av / 50)
+                moving_av = 0
 
 
         train_loss.append(epoch_train_loss)
@@ -213,7 +207,7 @@ if __name__ == "__main__":
                 epoch_val_losses.append(loss)
 
                 i += 1
-                if i % 80 == 0:
+                if i % 100 == 0:
                     print(i)
 
             val_loss.append(np.mean(epoch_val_losses))
