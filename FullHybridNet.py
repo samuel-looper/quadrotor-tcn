@@ -202,14 +202,14 @@ if __name__ == "__main__":
         for data in train_loader:
             optimizer.zero_grad()
             raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-            n_raw = raw_input.numpy()
+            # n_raw = raw_input.numpy()
             label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
-            n_label = label.numpy()
+            # n_label = label.numpy()
             output_gt = label[0, 6:12, 0]
             feedforward = torch.zeros(label.shape)
             feedforward[:, -4:, :] = label[:, -4:, :]
             input = torch.cat((raw_input, feedforward), 2)
-            n_input = input.numpy()
+            # n_input = input.numpy()
             output = odeint(func, input, torch.tensor([0, 0.01]))
             pred = output[1, 0, 6:12, -2]
             loss = loss_f(pred, output_gt)
