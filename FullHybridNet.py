@@ -154,7 +154,7 @@ class QuadrotorDynamics(nn.Module):
 if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
