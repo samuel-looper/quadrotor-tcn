@@ -112,13 +112,14 @@ class QuadrotorDynamics(nn.Module):
                           [-self.d, self.d, -self.d, self.d]])
         self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]]).type(torch.FloatTensor)
         self.g = torch.tensor([[0], [0], [9.8067]])
+        print("g: {}".format(self.g.type()))
 
     def forward(self, t, input):
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         state = torch.transpose(input[:, :, -2], 0, 1)
         ang = state[0:3, 0]
         rate = state[6:9, :]
         vel = state[9:12, :]
+        print("vel: {}".format(vel.type()))
 
         # update torques
         thrusts = torch.transpose(self.motor_net(input), 0, 1)
@@ -210,6 +211,7 @@ if __name__ == "__main__":
             feedforward[:, -4:, :] = label[:, -4:, :]
             input = torch.cat((raw_input, feedforward), 2)
             # n_input = input.numpy()
+            print("input: {}".format(input.type()))
             output = odeint(func, input, torch.tensor([0, 0.01]))
             pred = output[1, 0, 6:12, -2]
             loss = loss_f(pred, output_gt)
