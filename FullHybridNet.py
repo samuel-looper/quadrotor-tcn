@@ -237,8 +237,8 @@ if __name__ == "__main__":
         i = 0
         with torch.no_grad():
             for data in val_loader:
-                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
                 output_gt = label[0, 6:12, 0]
                 feedforward = torch.zeros(label.shape)
                 feedforward[:, -4:, :] = label[:, -4:, :]
