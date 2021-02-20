@@ -110,7 +110,7 @@ class QuadrotorDynamics(nn.Module):
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
                           [-self.d, self.d, -self.d, self.d]])
-        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]]).type(torch.FloatTensor)
+        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]])
         self.g = torch.tensor([[0], [0], [9.8067]])
 
     def forward(self, t, input):
@@ -138,12 +138,7 @@ class QuadrotorDynamics(nn.Module):
 
         M = torch.tensor([[1, 0, -s_phi], [0, c_phi, s_phi * c_theta], [0, -s_phi, c_theta * c_phi]])
 
-        print("rbi: {}".format(rbi.type()))
-        print("select: {}".format(self.select.type()))
-        print("torques: {}".format(torques.type()))
-        print("rbi: {}".format(rbi.type()))
-        print("vel: {}".format(vel.type()))
-        print("g: {}".format(self.g.type()))
+        # print("rbi: {}".format(rbi.type()))
         vel_dot = torch.mm(rbi, torch.mm(self.select, torques)) - self.kt * vel - self.g
         m_inv = torch.inverse(M)
         ang_dot = torch.mm(m_inv, rate)
