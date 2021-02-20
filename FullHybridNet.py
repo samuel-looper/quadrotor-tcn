@@ -114,6 +114,7 @@ class QuadrotorDynamics(nn.Module):
         self.g = torch.tensor([[0], [0], [9.8067]])
 
     def forward(self, t, input):
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         state = torch.transpose(input[:, :, -2], 0, 1)
         ang = state[0:3, 0]
         rate = state[6:9, :]
@@ -152,7 +153,6 @@ class QuadrotorDynamics(nn.Module):
 
 
 if __name__ == "__main__":
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.set_default_tensor_type("torch.cuda.FloatTensor")
     l = 0.211  # length (m)
