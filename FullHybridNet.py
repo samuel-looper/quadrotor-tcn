@@ -155,11 +155,6 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Assuming that we are on a CUDA machine, this should print a CUDA device:
-
-    print(device)
-
-
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
@@ -185,6 +180,7 @@ if __name__ == "__main__":
     print("Data Loaded Successfully")
 
     func = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
+    func.to(device)
     optimizer = optim.Adam(list(func.parameters()), lr=lr)
     loss_f = nn.MSELoss()
     train_loss = []
@@ -205,9 +201,9 @@ if __name__ == "__main__":
 
         for data in train_loader:
             optimizer.zero_grad()
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
             n_raw = raw_input.numpy()
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
             n_label = label.numpy()
             output_gt = label[0, 6:12, 0]
             feedforward = torch.zeros(label.shape)
