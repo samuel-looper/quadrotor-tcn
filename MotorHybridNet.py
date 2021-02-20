@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchsummary
 from torchdiffeq import odeint
 from data_loader import SinglePredDatasetTrain
 from torch.utils.data import DataLoader
@@ -67,6 +68,7 @@ class QuadrotorDynamics(nn.Module):
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
         self.motor_net = MotorHybrid(lookback, pred_steps)
+        torchsummary.summary(self.motor_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],

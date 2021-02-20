@@ -104,8 +104,8 @@ class QuadrotorDynamics(nn.Module):
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
         self.accel_net = AccelErrorNet(lookback, pred_steps)
         self.motor_net = MotorHybrid(lookback, pred_steps)
-        torchsummary.summary(self.accel_net, (16, 65))
-        torchsummary.summary(self.motor_net, (16, 65))
+        # torchsummary.summary(self.accel_net, (16, 65))
+        # torchsummary.summary(self.motor_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
@@ -152,6 +152,14 @@ class QuadrotorDynamics(nn.Module):
 
 
 if __name__ == "__main__":
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # Assuming that we are on a CUDA machine, this should print a CUDA device:
+
+    print(device)
+
+
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
