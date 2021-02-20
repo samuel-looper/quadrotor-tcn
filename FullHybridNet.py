@@ -112,14 +112,12 @@ class QuadrotorDynamics(nn.Module):
                           [-self.d, self.d, -self.d, self.d]])
         self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]]).type(torch.FloatTensor)
         self.g = torch.tensor([[0], [0], [9.8067]])
-        print("g: {}".format(self.g.type()))
 
     def forward(self, t, input):
         state = torch.transpose(input[:, :, -2], 0, 1)
         ang = state[0:3, 0]
         rate = state[6:9, :]
         vel = state[9:12, :]
-        print("vel: {}".format(vel.type()))
 
         # update torques
         thrusts = torch.transpose(self.motor_net(input), 0, 1)
@@ -140,6 +138,12 @@ class QuadrotorDynamics(nn.Module):
 
         M = torch.tensor([[1, 0, -s_phi], [0, c_phi, s_phi * c_theta], [0, -s_phi, c_theta * c_phi]])
 
+        print("rbi: {}".format(rbi.type()))
+        print("select: {}".format(self.select.type()))
+        print("torques: {}".format(torques.type()))
+        print("rbi: {}".format(rbi.type()))
+        print("vel: {}".format(vel.type()))
+        print("g: {}".format(self.g.type()))
         vel_dot = torch.mm(rbi, torch.mm(self.select, torques)) - self.kt * vel - self.g
         m_inv = torch.inverse(M)
         ang_dot = torch.mm(m_inv, rate)
@@ -211,7 +215,6 @@ if __name__ == "__main__":
             feedforward[:, -4:, :] = label[:, -4:, :]
             input = torch.cat((raw_input, feedforward), 2)
             # n_input = input.numpy()
-            print("input: {}".format(input.type()))
             output = odeint(func, input, torch.tensor([0, 0.01]))
             pred = output[1, 0, 6:12, -2]
             loss = loss_f(pred, output_gt)
