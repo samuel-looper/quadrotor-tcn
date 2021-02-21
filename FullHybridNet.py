@@ -247,7 +247,7 @@ if __name__ == "__main__":
                 optimizer.zero_grad()  # Reset gradients
                 output = odeint(func, input, torch.tensor([0, 0.01]))
                 loss = loss_f(output[1, 0, 6:12, -2], output_gt)
-                epoch_val_losses.append(loss)
+                epoch_val_losses.append(loss.item())
 
                 i += 1
                 if i % 100 == 0:
