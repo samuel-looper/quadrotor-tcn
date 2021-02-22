@@ -6,6 +6,7 @@ from data_loader import SinglePredDatasetTrain
 from torch.utils.data import DataLoader
 import math
 PATH = 'E2E_v3.pth'
+torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 class Chomp1d(nn.Module):
@@ -51,7 +52,6 @@ class TConvBlock(nn.Module):
                 layers += [TConvLayer(c_in, c_out, K, stride=1, dilation=d, padding=(K - 1) * d)]
             else:
                 layers += [TConvLayer(c_out, c_out, K, stride=1, dilation=d, padding=(K - 1) * d)]
-
 
         self.network = nn.Sequential(*layers)
 
