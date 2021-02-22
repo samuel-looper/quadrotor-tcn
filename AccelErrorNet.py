@@ -136,7 +136,7 @@ if __name__ == "__main__":
     lookback = 64
     lr = 0.001
     wd = 0.0005
-    epochs = 12
+    epochs = 30
     pred_steps = 1
 
     tv_set = SinglePredDatasetTrain('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)

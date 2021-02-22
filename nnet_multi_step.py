@@ -14,9 +14,9 @@ def recurrent_test(test_loader, model, losses):
 
     with torch.no_grad():
         for data in test_loader:
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
-            label_n = label.numpy()
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
+            # label_n = label.numpy()
             pred = torch.zeros((bs, 16, 1))
             for j in range(pred_steps):
                 output_gt = label[0, 6:12, j] # Get GT for that timestep
@@ -41,7 +41,7 @@ def recurrent_test(test_loader, model, losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("FH_multi_test_results.csv", losses.numpy())
+        np.savetxt("FH_v3_multi_test_results.csv", losses.numpy())
 
 
 def conv_test(test_loader, net, losses):
@@ -71,6 +71,9 @@ def conv_test(test_loader, net, losses):
 
 
 if __name__ == "__main__":
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+
     # Initialize Variables
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
@@ -90,8 +93,9 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
     n = int(len(test_set) / bs)
 
-    model = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz)
-    model.load_state_dict(torch.load('./full_hybrid.pth'))
+    model = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
+    model.load_state_dict(torch.load('./FH_v3.pth'))
+    model.to(device)
     model.train(False)
     model.eval()
 
