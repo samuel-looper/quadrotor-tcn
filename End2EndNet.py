@@ -6,24 +6,20 @@ from data_loader import SinglePredDatasetTrain
 from torch.utils.data import DataLoader
 import math
 PATH = 'E2E_v3.pth'
-torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         self.chomp_size = chomp_size
 
     def forward(self, x):
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         return x[:, :, :-self.chomp_size].contiguous()
 
 
 class TConvLayer(nn.Module):
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding):
         super(TConvLayer, self).__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         self.conv1 = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.chomp1 = Chomp1d(padding)
         self.net = nn.Sequential(self.conv1, self.chomp1)
@@ -36,7 +32,6 @@ class TConvLayer(nn.Module):
             self.downsample.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         out = self.net(x)
         res = x if self.downsample is None else self.downsample(x)
         return (out + res)
@@ -49,7 +44,6 @@ class TConvBlock(nn.Module):
     # Note that the look-back length is not necessarily L but is actually the nearest value K*d^i < L for some int i
     def __init__(self, L, c_in, c_out, K, d):
         super(TConvBlock, self).__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         layers = []
         n = math.floor(math.log(L / K, d))
         for i in range(n):
@@ -61,7 +55,6 @@ class TConvBlock(nn.Module):
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         return self.network(x)
 
 

@@ -16,7 +16,6 @@ class AccelErrorNet(nn.Module):
     # Deep Neural Network for motor thrust prediction
     def __init__(self, lookback, pred_steps):
         super(AccelErrorNet, self).__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         L = lookback
         P = pred_steps
         K = 8
@@ -44,7 +43,6 @@ class AccelErrorNet(nn.Module):
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
@@ -59,7 +57,6 @@ class MotorHybrid(nn.Module):
     # Deep Neural Network for motor thrust prediction
     def __init__(self, lookback, pred_steps):
         super(MotorHybrid, self).__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         L = lookback
         P = pred_steps
         K = 8
@@ -87,7 +84,6 @@ class MotorHybrid(nn.Module):
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
@@ -102,7 +98,6 @@ class MotorHybrid(nn.Module):
 class QuadrotorDynamics(nn.Module):
     def __init__(self, l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps):
         super().__init__()
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         self.l = l
         self.m = m
         self.d = d
@@ -121,7 +116,6 @@ class QuadrotorDynamics(nn.Module):
         self.g = torch.tensor([[0], [0], [9.8067]])
 
     def forward(self, t, input):
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         state = torch.transpose(input[:, :, -2], 0, 1)
         ang = state[0:3, 0]
         rate = state[6:9, :]
@@ -161,8 +155,8 @@ class QuadrotorDynamics(nn.Module):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
@@ -188,7 +182,7 @@ if __name__ == "__main__":
     print("Data Loaded Successfully")
 
     func = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
-    func.to(device)
+    # func.to(device)
     optimizer = optim.Adam(list(func.parameters()), lr=lr)
     loss_f = nn.MSELoss()
     train_loss = []
@@ -209,10 +203,10 @@ if __name__ == "__main__":
 
         for data in train_loader:
             optimizer.zero_grad()
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-            # n_raw = raw_input.numpy()
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
-            # n_label = label.numpy()
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
+            n_raw = raw_input.numpy()
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
+            n_label = label.numpy()
             output_gt = label[0, 6:12, 0]
             feedforward = torch.zeros(label.shape)
             feedforward[:, -4:, :] = label[:, -4:, :]
@@ -245,8 +239,8 @@ if __name__ == "__main__":
         i = 0
         with torch.no_grad():
             for data in val_loader:
-                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
+                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
+                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
                 output_gt = label[0, 6:12, 0]
                 feedforward = torch.zeros(label.shape)
                 feedforward[:, -4:, :] = label[:, -4:, :]

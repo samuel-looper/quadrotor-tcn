@@ -8,15 +8,14 @@ from data_loader import SinglePredDatasetTest
 
 
 def recurrent_test(test_loader, model, losses):
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
     loss_f = nn.MSELoss()
     i = 0
     j = 0
 
     with torch.no_grad():
         for data in test_loader:
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
             # label_n = label.numpy()
             pred = torch.zeros((bs, 16, 1))
             for j in range(pred_steps):
@@ -72,8 +71,8 @@ def conv_test(test_loader, net, losses):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
     # Initialize Variables
     l = 0.211  # length (m)
@@ -96,7 +95,7 @@ if __name__ == "__main__":
 
     model = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
     model.load_state_dict(torch.load('./FH_v3.pth'))
-    model.to(device)
+    # model.to(device)
     model.train(False)
     model.eval()
 
