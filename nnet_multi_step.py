@@ -8,6 +8,7 @@ from data_loader import SinglePredDatasetTest
 
 
 def recurrent_test(test_loader, model, losses):
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
     loss_f = nn.MSELoss()
     i = 0
     j = 0

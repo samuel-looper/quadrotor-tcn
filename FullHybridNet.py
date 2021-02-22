@@ -16,6 +16,7 @@ class AccelErrorNet(nn.Module):
     # Deep Neural Network for motor thrust prediction
     def __init__(self, lookback, pred_steps):
         super(AccelErrorNet, self).__init__()
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         L = lookback
         P = pred_steps
         K = 8
@@ -43,6 +44,7 @@ class AccelErrorNet(nn.Module):
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
@@ -57,6 +59,7 @@ class MotorHybrid(nn.Module):
     # Deep Neural Network for motor thrust prediction
     def __init__(self, lookback, pred_steps):
         super(MotorHybrid, self).__init__()
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         L = lookback
         P = pred_steps
         K = 8
@@ -84,10 +87,12 @@ class MotorHybrid(nn.Module):
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
-        x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
+        x = self.tconv4(x[:, :, (self.L + self.P - self.t):])
+        x = self.relu4(self.bn4(x))
         x = torch.flatten(x, 1, 2)
         x = self.relu5(self.fc1(x))
         x = self.fc2(x)
@@ -97,6 +102,7 @@ class MotorHybrid(nn.Module):
 class QuadrotorDynamics(nn.Module):
     def __init__(self, l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps):
         super().__init__()
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         self.l = l
         self.m = m
         self.d = d
@@ -115,6 +121,7 @@ class QuadrotorDynamics(nn.Module):
         self.g = torch.tensor([[0], [0], [9.8067]])
 
     def forward(self, t, input):
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
         state = torch.transpose(input[:, :, -2], 0, 1)
         ang = state[0:3, 0]
         rate = state[6:9, :]
