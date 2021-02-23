@@ -5,7 +5,7 @@ import torchsummary
 from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import math
-PATH = 'E2E_v3.pth'
+PATH = 'E2E_v4.pth'
 
 
 class Chomp1d(nn.Module):
@@ -69,30 +69,45 @@ class E2ESingleStepTCN(nn.Module):
         self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
         self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L+P, 16, 32, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(32)
+        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.tconv3 = TConvBlock(P + int(L/2), 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(P + int(L/2), 32, 64, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(64)
+        self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P, 64, 6, K, d)
+        self.tconv5 = TConvBlock(P, 32, 64, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(64)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(P, 64, 64, K, d)
+        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(P, 64, 128, K, d)
+        self.bn7 = torch.nn.BatchNorm1d(128)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(P, 128, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
-        x = self.relu1(self.bn1(self.tconv1(input)))
-        x = self.relu2(self.bn2(self.tconv2(x)))
-        x = self.relu3(self.bn3(self.tconv3(x[:, :, int(self.L/2):])))
-        x = self.relu4(self.bn4(self.tconv4(x)))
-        x = self.tconv6(x[:, :, int(self.L/2):])
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L/2):])))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L/2):])))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = self.tconv8(x7)
         # print(x.shape)
-        return x
+        return x8
 
 
 def train_model():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+
     lr = 0.001
     wd = 0.0005
     epochs = 30
@@ -104,12 +119,12 @@ def train_model():
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
     train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator())
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
-    val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=4)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=4)
     print("Data Loaded Successfully")
 
-    net = E2ESingleStepTCN(L, P)
-    # torchsummary.summary(net, (16, 124))
+    net = E2ESingleStepTCN(L, P).to(device)
+    torchsummary.summary(net, (16, 124))
 
     loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
     optimizer = torch.optim.Adam(list(net.parameters()), lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
@@ -128,8 +143,8 @@ def train_model():
         i = 0
 
         for data in train_loader:
-            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
             output = label[:, 6:12, :]
             feedforward = torch.zeros(label.shape)
@@ -140,7 +155,7 @@ def train_model():
             pred = net(input)  # Forward Pass
             minibatch_loss = loss(pred, output)  # Compute loss
             epoch_train_loss += minibatch_loss.item() / train_len
-            moving_av += loss.item()
+            moving_av += minibatch_loss.item()
 
             minibatch_loss.backward()  # Backpropagation
             optimizer.step()  # Optimization
@@ -190,7 +205,7 @@ def train_model():
             plt.xlabel("Epoch")
             plt.ylabel("MSE Loss")
             plt.legend(["Training Loss", "Validation Loss"])
-            plt.savefig("E2E_v3_train_intermediate.png")
+            plt.savefig("E2E_v4_train_intermediate.png")
             plt.show()
 
     print("Training Complete")
@@ -202,7 +217,7 @@ def train_model():
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["Training Loss", "Validation Loss"])
-    plt.savefig("E2E_v3_train.png")
+    plt.savefig("E2E_v4_train.png")
     plt.show()
 
 
