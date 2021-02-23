@@ -176,8 +176,8 @@ def train_model():
         i = 0
         with torch.no_grad():
             for data in val_loader:
-                input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+                input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
                 output = label[:, 6:12, :]
                 feedforward = torch.zeros(label.shape)
