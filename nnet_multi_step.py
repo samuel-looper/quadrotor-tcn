@@ -2,12 +2,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from FullHybridNet import QuadrotorDynamics
+from End2EndNet import E2ESingleStepTCN
 from torchdiffeq import odeint
-from data_loader import SinglePredDatasetTest
+from data_loader import TestSet
 
 
-def recurrent_test(test_loader, model, losses):
+def recurrent_test(test_loader, model, rate_losses, vel_losses):
     loss_f = nn.MSELoss()
     i = 0
     j = 0
@@ -34,17 +34,20 @@ def recurrent_test(test_loader, model, losses):
 
                 output = odeint(model, input, torch.tensor([0, 0.01]))
                 pred = output[1, 0, :, -2]
-                loss = loss_f(pred[6:12], output_gt)
-                losses[i, j] = loss
+                rate_loss = loss_f(pred[6:9], output_gt[:3])
+                vel_loss = loss_f(pred[9:12], output_gt[3:])
+                rate_losses[i, j] = vel_loss
+                vel_losses[i, j] = rate_loss
 
             i += 1
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("FH_v3_multi_test_results.csv", losses.numpy())
+        np.savetxt("MH_v3_multi_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("MH_v3_multi_test_results_vels.csv", vel_losses.numpy())
 
 
-def conv_test(test_loader, net, losses):
+def conv_test(test_loader, net, rate_losses, vel_losses):
     loss_f = nn.MSELoss()
     i = 0
     with torch.no_grad():
@@ -60,14 +63,18 @@ def conv_test(test_loader, net, losses):
 
             pred = net(input)
             for j in range(pred_steps):
-                val = loss_f(output[0, :, j], pred[0, : , j]).item()
-                losses[i][j] = val
+                rate_loss = loss_f(output[0, :3, j], pred[0, :3, j]).item()
+                vel_loss = loss_f(output[0, 3:, j], pred[0, 3:, j]).item()
+
+                vel_losses[i][j] = vel_loss
+                rate_losses[i][j] = rate_loss
 
             i += 1
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_multi_test_results.csv", losses.numpy())
+        np.savetxt("E2E_v3_multi_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("E2E_v3_multi_test_results_vels.csv", vel_losses.numpy())
 
 
 if __name__ == "__main__":
@@ -89,12 +96,12 @@ if __name__ == "__main__":
     bs = 1
 
     # Data initialization
-    test_set = SinglePredDatasetTest('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
+    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
     n = int(len(test_set) / bs)
 
-    model = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
-    model.load_state_dict(torch.load('./FH_v3.pth'))
+    model = E2ESingleStepTCN(lookback, pred_steps)
+    model.load_state_dict(torch.load('./E2E_v3.pth', map_location=torch.device("cpu")))
     # model.to(device)
     model.train(False)
     model.eval()
@@ -102,8 +109,9 @@ if __name__ == "__main__":
 
     print("Testing Length: {}".format(n))
 
-    losses = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, losses)
+    vel_losses = torch.zeros((n, pred_steps))
+    rate_losses = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses, vel_losses)
 
 
 

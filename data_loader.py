@@ -31,7 +31,7 @@ class WBDataLoader:
         return 0
 
 
-class SinglePredDatasetTrain(Dataset):
+class TrainSet(Dataset):
     def __init__(self, filepath, input_size, output_size, full_set=False):
         if full_set:
             chan = 16
@@ -93,7 +93,7 @@ class SinglePredDatasetTrain(Dataset):
         return sample
 
 
-class SinglePredDatasetTest(Dataset):
+class TestSet(Dataset):
     def __init__(self, filepath, input_size, output_size, full_set=False):
         if full_set:
             chan = 16

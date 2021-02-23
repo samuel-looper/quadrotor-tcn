@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torchsummary
-from data_loader import SinglePredDatasetTrain
+from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import math
 PATH = 'E2E_v3.pth'
@@ -78,7 +78,7 @@ class E2ESingleStepTCN(nn.Module):
         self.tconv4 = TConvBlock(P + int(L/2), 32, 64, K, d)
         self.bn4 = torch.nn.BatchNorm1d(64)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 64, 6, K, d)
+        self.tconv6 = TConvBlock(P, 64, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
@@ -87,7 +87,7 @@ class E2ESingleStepTCN(nn.Module):
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x[:, :, int(self.L/2):])))
         x = self.relu4(self.bn4(self.tconv4(x)))
-        x = self.tconv5(x[:, :, int(self.L/2):])
+        x = self.tconv6(x[:, :, int(self.L/2):])
         # print(x.shape)
         return x
 
@@ -99,7 +99,7 @@ def train_model():
     bs = 16
     L =64
     P = 60
-    tv_set = SinglePredDatasetTrain('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
+    tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
 
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
