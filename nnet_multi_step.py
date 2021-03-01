@@ -73,23 +73,13 @@ def conv_test(test_loader, net, rate_losses, vel_losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_v3_multi_test_results_rates.csv", rate_losses.numpy())
-        np.savetxt("E2E_v3_multi_test_results_vels.csv", vel_losses.numpy())
+        np.savetxt("E2E_v4_multi_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("E2E_v4_multi_test_results_vels.csv", vel_losses.numpy())
 
 
 if __name__ == "__main__":
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # torch.set_default_tensor_type("torch.cuda.FloatTensor")
-
-    # Initialize Variables
-    l = 0.211  # length (m)
-    d = 1.7e-5  # blade parameter
-    m = 1  # mass (kg)
-    kt = 2.35e-14  # translational drag coefficient
-    kr = 0.0099  # rotational drag coefficient
-    ixx = 0.002  # moment of inertia about X-axis
-    iyy = 0.002  # moment of inertia about Y-axis
-    izz = 0.001  # moment of inertia about Z-axis
 
     lookback = 64
     pred_steps = 60
@@ -101,7 +91,7 @@ if __name__ == "__main__":
     n = int(len(test_set) / bs)
 
     model = E2ESingleStepTCN(lookback, pred_steps)
-    model.load_state_dict(torch.load('./E2E_v3.pth', map_location=torch.device("cpu")))
+    model.load_state_dict(torch.load('./E2E_v4.pth', map_location=torch.device("cpu")))
     # model.to(device)
     model.train(False)
     model.eval()

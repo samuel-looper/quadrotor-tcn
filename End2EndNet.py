@@ -5,7 +5,7 @@ import torchsummary
 from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import math
-PATH = 'E2E_v4.pth'
+PATH = 'E2E_v4_2.pth'
 
 
 class Chomp1d(nn.Module):
@@ -108,8 +108,8 @@ def train_model():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
-    lr = 0.001
-    wd = 0.0005
+    lr = 0.01
+    wd = 0.005
     epochs = 30
     bs = 16
     L =64
@@ -161,7 +161,7 @@ def train_model():
             optimizer.step()  # Optimization
             i += 1
             if i % 50 == 0:
-                print("Training {}% finished".format(round(100 * i / train_len, 4)))
+                print("Training {}% finished".format(round(100 * i* bs / train_len, 4)))
                 print(moving_av / 50)
                 moving_av = 0
 
