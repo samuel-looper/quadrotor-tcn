@@ -5,7 +5,7 @@ import torchsummary
 from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import math
-PATH = 'E2E_v4_2.pth'
+PATH = 'E2E_v5.pth'
 
 
 class Chomp1d(nn.Module):
@@ -72,45 +72,53 @@ class E2ESingleStepTCN(nn.Module):
         self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
         self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(P + int(L/2), 16, 32, K, d)
+        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
         self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
         self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 32, 64, K, d)
+        self.tconv5 = TConvBlock(P + int(L/2), 32, 64, K, d)
         self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P, 64, 64, K, d)
+        self.tconv6 = TConvBlock(P + int(L/2), 64, 64, K, d)
         self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
         self.tconv7 = TConvBlock(P, 64, 128, K, d)
         self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(P, 128, 6, K, d)
+        self.tconv8 = TConvBlock(P, 128, 128, K, d)
+        self.bn8 = torch.nn.BatchNorm1d(128)
+        self.relu8 = torch.nn.ReLU()
+        self.tconv9 = TConvBlock(P, 128, 256, K, d)
+        self.bn9 = torch.nn.BatchNorm1d(256)
+        self.relu9 = torch.nn.ReLU()
+        self.tconv10 = TConvBlock(P, 256, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L/2):])))
-        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L/2):])))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3[:, :, int(self.L/2):] + self.relu4(self.bn4(self.tconv4(x3[:, :, int(self.L/2):])))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
         x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = self.relu7(self.bn7(self.tconv7(x6)))
-        x8 = self.tconv8(x7)
+        x7 = self.relu7(self.bn7(self.tconv7(x6[:, :, int(self.L/2):])))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
+        x10 = self.tconv10(x9)
         # print(x.shape)
-        return x8
+        return x10
 
 
 def train_model():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
-    lr = 0.01
-    wd = 0.005
-    epochs = 30
+    lr = 0.0001
+    wd = 0.00005
+    epochs = 100
     bs = 16
     L =64
     P = 60
@@ -123,7 +131,7 @@ def train_model():
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
 
-    net = E2ESingleStepTCN(L, P).to(device)
+    net = E2ESingleStepTCN(L, P)#.to(device)
     torchsummary.summary(net, (16, 124))
 
     loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
@@ -136,15 +144,15 @@ def train_model():
 
     print("Training Length: {}".format(int(train_len / bs)))
     for epoch in range(1, epochs + 1):
-        print("Training")
+        print("Epoch # {}".format(epoch))
         net.train(True)
         epoch_train_loss = 0
         moving_av = 0
         i = 0
 
         for data in train_loader:
-            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
+            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
 
             output = label[:, 6:12, :]
             feedforward = torch.zeros(label.shape)
@@ -176,8 +184,8 @@ def train_model():
         i = 0
         with torch.no_grad():
             for data in val_loader:
-                input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
-                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
+                input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
+                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
 
                 output = label[:, 6:12, :]
                 feedforward = torch.zeros(label.shape)
@@ -205,7 +213,7 @@ def train_model():
             plt.xlabel("Epoch")
             plt.ylabel("MSE Loss")
             plt.legend(["Training Loss", "Validation Loss"])
-            plt.savefig("E2E_v4_train_intermediate.png")
+            plt.savefig("E2E_v5_train_intermediate.png")
             plt.show()
 
     print("Training Complete")
@@ -217,7 +225,7 @@ def train_model():
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["Training Loss", "Validation Loss"])
-    plt.savefig("E2E_v4_train.png")
+    plt.savefig("E2E_v5_train.png")
     plt.show()
 
 
