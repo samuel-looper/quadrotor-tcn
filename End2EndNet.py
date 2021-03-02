@@ -5,7 +5,7 @@ import torchsummary
 from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import math
-PATH = 'E2E_v4_2.pth'
+PATH = 'E2E_v4_more_epochs_low_lr.pth'
 
 
 class Chomp1d(nn.Module):
@@ -108,9 +108,9 @@ def train_model():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
-    lr = 0.01
-    wd = 0.005
-    epochs = 30
+    lr = 0.0001
+    wd = 0.00005
+    epochs = 100
     bs = 16
     L =64
     P = 60
@@ -200,13 +200,13 @@ def train_model():
                 torch.save(net.state_dict(), PATH)
 
             # Plotting
-            plt.plot(train_loss, linewidth=2)
-            plt.plot(val_loss, linewidth=2)
-            plt.xlabel("Epoch")
-            plt.ylabel("MSE Loss")
-            plt.legend(["Training Loss", "Validation Loss"])
-            plt.savefig("E2E_v4_train_intermediate.png")
-            plt.show()
+            # plt.plot(train_loss, linewidth=2)
+            # plt.plot(val_loss, linewidth=2)
+            # plt.xlabel("Epoch")
+            # plt.ylabel("MSE Loss")
+            # plt.legend(["Training Loss", "Validation Loss"])
+            # plt.savefig("E2E_v4_train_intermediate.png")
+            # plt.show()
 
     print("Training Complete")
     print("Best Validation Error ({}) at epoch {}".format(best_loss, best_epoch))
@@ -217,7 +217,7 @@ def train_model():
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["Training Loss", "Validation Loss"])
-    plt.savefig("E2E_v4_train.png")
+    plt.savefig("E2E_v4_train_more_epochs_low_lr.png")
     plt.show()
 
 
