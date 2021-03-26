@@ -66,43 +66,49 @@ class E2ESingleStepTCN(nn.Module):
         d = 2
         self.L = L
         self.tconv1 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn1 = torch.nn.BatchNorm1d(16)
+        # self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
         self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(16)
-        self.relu2 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(16)
+        # self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
         self.tconv3 = TConvBlock(P + int(L / 2), 16, 32, K, d)
-        self.bn3 = torch.nn.BatchNorm1d(32)
+        # self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
         self.tconv4 = TConvBlock(P + int(L / 2), 32, 32, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(32)
+        # self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
         self.tconv5 = TConvBlock(P, 32, 64, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(64)
+        # self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
         self.tconv6 = TConvBlock(P, 64, 64, K, d)
-        self.bn6 = torch.nn.BatchNorm1d(64)
+        # self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
         self.tconv7 = TConvBlock(P, 64, 128, K, d)
-        self.bn7 = torch.nn.BatchNorm1d(128)
+        # self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
         self.tconv8 = TConvBlock(P, 128, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
-        x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L / 2):])))
-        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L / 2):])))
-        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = self.relu7(self.bn7(self.tconv7(x6)))
-        x8 = self.tconv8(x7)
+        # x1 = self.relu1(self.bn1(self.tconv1(input)))
+        # x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        # x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L / 2):])))
+        # x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        # x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L / 2):])))
+        # x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        # x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        # x8 = self.tconv8(x7)
         # print(x.shape)
+        x1 = self.relu1(self.tconv1(input))
+        x2 = x1 + self.relu2(self.tconv2(x1))
+        x3 = self.relu3(self.tconv3(x2[:, :, int(self.L / 2):]))
+        x4 = x3 + self.relu4(self.tconv4(x3))
+        x5 = self.relu5(self.tconv5(x4[:, :, int(self.L / 2):]))
+        x6 = x5 + self.relu6(self.tconv6(x5))
+        x7 = self.relu7(self.tconv7(x6))
+        x8 = self.tconv8(x7)
+
         return x8
 
 
@@ -235,14 +241,6 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
-
-    net = E2ESingleStepTCN(L, P).to(device)
-    loss = WeightedTemporalLoss()  # Define Mean Square Error Loss
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_weighted")
-
-    net = E2ESingleStepTCN(L, P).to(device)
-    loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_L2")
 
     net = E2ESingleStepTCN(L, P).to(device)
     loss = torch.nn.L1Loss()  # Define Mean Square Error Loss
