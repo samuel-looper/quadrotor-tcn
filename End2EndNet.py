@@ -69,43 +69,58 @@ class E2ESingleStepTCN(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
         self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
-        # self.bn2 = torch.nn.BatchNorm1d(16)
+        self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(P + int(L / 2), 16, 32, K, d)
+        self.dropout2 = torch.nn.Dropout(p=0.2)
+        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.dropout3 = torch.nn.Dropout(p=0.2)
-        self.tconv4 = TConvBlock(P + int(L / 2), 32, 32, K, d)
-        # self.bn4 = torch.nn.BatchNorm1d(32)
+        self.tconv4 = TConvBlock(L + P, 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 32, 64, K, d)
+        self.dropout4 = torch.nn.Dropout(p=0.2)
+        self.tconv5 = TConvBlock(L + P, 32, 64, K, d)
         self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
-        self.dropout5 = torch.nn.Dropout(p=0.2)
-        self.tconv6 = TConvBlock(P, 64, 64, K, d)
-        # self.bn6 = torch.nn.BatchNorm1d(64)
+        self.tconv6 = TConvBlock(P + int(L / 2), 64, 64, K, d)
+        self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(P, 64, 128, K, d)
+        self.dropout6 = torch.nn.Dropout(p=0.2)
+        self.tconv7 = TConvBlock(P + int(L / 2), 64, 128, K, d)
         self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
-        self.dropout7 = torch.nn.Dropout(p=0.2)
-        self.tconv8 = TConvBlock(P, 128, 6, K, d)
+        self.tconv8 = TConvBlock(P + int(L / 2), 128, 128, K, d)
+        self.bn8 = torch.nn.BatchNorm1d(128)
+        self.relu8 = torch.nn.ReLU()
+        self.dropout8 = torch.nn.Dropout(p=0.2)
+        self.tconv9 = TConvBlock(P, 128, 256, K, d)
+        self.bn9 = torch.nn.BatchNorm1d(256)
+        self.relu9 = torch.nn.ReLU()
+        self.tconv10 = TConvBlock(P, 256, 256, K, d)
+        self.bn10 = torch.nn.BatchNorm1d(256)
+        self.relu10 = torch.nn.ReLU()
+        self.tconv11 = TConvBlock(P, 256, 512, K, d)
+        self.bn11 = torch.nn.BatchNorm1d(512)
+        self.relu11 = torch.nn.ReLU()
+        self.tconv12 = TConvBlock(P, 512, 6, K, d)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.tconv2(x1))
-        x3 = self.dropout3(self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L / 2):]))))
-        x4 = x3 + self.relu4(self.tconv4(x3))
-        x5 = self.dropout5(self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L / 2):]))))
-        x6 = x5 + self.relu6(self.tconv6(x5))
-        x7 = self.dropout7(self.relu7(self.bn7(self.tconv7(x6))))
-        x8 = self.tconv8(x7)
+        x2 = self.dropout2(x1 + self.relu2(self.bn2(self.tconv2(x1))))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = self.dropout4(x3 + self.relu4(self.bn4(self.tconv4(x3))))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = self.dropout6(x5[:, :, int(self.L / 2):]  + self.relu6(self.bn6(self.tconv6(x5[:, :, int(self.L / 2):] ))))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = self.dropout8(x7 + self.relu8(self.bn8(self.tconv8(x7))))
+        x9 = self.relu9(self.bn9(self.tconv9(x8[:, :, int(self.L / 2):] )))
+        x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
+        x11 = self.relu11(self.bn11(self.tconv11(x10)))
+        x12 = self.tconv12(x11)
         # print(x.shape)
-
-        return x8
-
+        return x12
 
 class WeightedTemporalLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
@@ -226,7 +241,7 @@ if __name__ == "__main__":
     wd = 0.00005
     epochs = 100
     bs = 16
-    L = 64
+    L = 128
     P = 60
     tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
 
