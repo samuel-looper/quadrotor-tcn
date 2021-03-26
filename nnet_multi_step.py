@@ -2,13 +2,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import E2ESingleStepTCN_NewArch
+from End2EndNet import E2ESingleStepTCN
 from torchdiffeq import odeint
 from data_loader import TestSet
 
 
 def recurrent_test(test_loader, model, rate_losses, vel_losses):
-    loss_f = nn.MSELoss()
+    loss_f = nn.L1Loss()
     i = 0
     j = 0
 
@@ -73,8 +73,8 @@ def conv_test(test_loader, net, rate_losses, vel_losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_newarch_multi_test_results_rates.csv", rate_losses.numpy())
-        np.savetxt("E2E_newarch_multi_test_results_vels.csv", vel_losses.numpy())
+        np.savetxt("E2E_L1_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("E2E_L1_test_results_vels.csv", vel_losses.numpy())
 
 
 if __name__ == "__main__":
@@ -90,8 +90,8 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
     n = int(len(test_set) / bs)
 
-    model = E2ESingleStepTCN_NewArch(lookback, pred_steps)
-    model.load_state_dict(torch.load('./End2End_NewArch.pth', map_location=torch.device("cpu")))
+    model = E2ESingleStepTCN(lookback, pred_steps)
+    model.load_state_dict(torch.load('./End2End_L1.pth', map_location=torch.device("cpu")))
     # model.to(device)
     model.train(False)
     model.eval()
