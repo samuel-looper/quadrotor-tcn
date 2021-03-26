@@ -106,65 +106,19 @@ class E2ESingleStepTCN(nn.Module):
         return x8
 
 
-class E2ESingleStepTCN_NewArch(nn.Module):
-    def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCN_NewArch, self).__init__()
-        L = lookback
-        P = forward_step
-        K = 8
-        d = 2
-        self.L = L
-        self.tconv1 = TConvBlock(L-1, 16, 16, K, d)
-        self.bn1 = torch.nn.BatchNorm1d(16)
-        self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L-1, 16, 16, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(16)
-        self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(L-1, 16, 16, K, d)
-        self.bn3 = torch.nn.BatchNorm1d(16)
-        self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(L-1, 16, 16, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(16)
-        self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(L+P, 16, 32, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(32)
-        self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(L+P, 32, 64, K, d)
-        self.bn6 = torch.nn.BatchNorm1d(64)
-        self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(P + int(L / 2), 64, 64, K, d)
-        self.bn7 = torch.nn.BatchNorm1d(64)
-        self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(P, 64, 128, K, d)
-        self.bn8 = torch.nn.BatchNorm1d(128)
-        self.relu8 = torch.nn.ReLU()
-        self.tconv9 = TConvBlock(P, 128, 6, K, d)
+class WeightedTemporalLoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(WeightedTemporalLoss, self).__init__()
 
-    def forward(self, input):
-        # Assume X: batch by length by channel size
-        # print(input.shape)
-        in1 = input[:, :, self.L-1:]
-
-        x1 = self.relu1(self.bn1(self.tconv1(in1)))
-        x2 = self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = self.relu4(self.bn4(self.tconv4(x3)))
-
-        in2 = torch.cat((x4, input[:, :, :self.L-1]), 2)
-
-        x5 = self.relu5(self.bn5(self.tconv5(in2)))
-        x6 = self.relu6(self.bn6(self.tconv6(x5)))
-
-        x7 = self.relu7(self.bn7(self.tconv7(x6[:, :, int(self.L / 2):])))
-        x8 = self.relu8(self.bn8(self.tconv8(x7[:, :, int(self.L / 2):])))
-
-        x9 = self.tconv9(x8)
-        return x9
+    def forward(self, prediction, label):
+        error = prediction-label
+        error = torch.mean(error**2, (0, 1))
+        weights = torch.flip(torch.arange(0.88, 1, 0.002), [0])
+        return torch.mean(torch.mul(error, weights))
 
 
-def train_model(net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, name):
+def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, name):
 
-    loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
     optimizer = torch.optim.Adam(list(net.parameters()), lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
 
     train_loss = []
@@ -261,8 +215,11 @@ def train_model(net, train_loader, val_loader, device, bs, epochs, lr, wd, train
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    else:
+        device = torch.device("cpu")
 
     lr = 0.0001
     wd = 0.00005
@@ -280,7 +237,13 @@ if __name__ == "__main__":
     print("Data Loaded Successfully")
 
     net = E2ESingleStepTCN(L, P).to(device)
-    train_model(net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_Original")
+    loss = WeightedTemporalLoss()  # Define Mean Square Error Loss
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_weighted")
 
-    net = E2ESingleStepTCN_NewArch(L, P).to(device)
-    train_model(net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_NewArch")
+    net = E2ESingleStepTCN(L, P).to(device)
+    loss = torch.nn.MSELoss()  # Define Mean Square Error Loss
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_L2")
+
+    net = E2ESingleStepTCN(L, P).to(device)
+    loss = torch.nn.L1Loss()  # Define Mean Square Error Loss
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_L1")
