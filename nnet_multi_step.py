@@ -73,8 +73,8 @@ def conv_test(test_loader, net, rate_losses, vel_losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_v4_1_multi_test_results_rates.csv", rate_losses.numpy())
-        np.savetxt("E2E_v4_1_multi_test_results_vels.csv", vel_losses.numpy())
+        np.savetxt("E2E_v5_multi_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("E2E_v5_multi_test_results_vels.csv", vel_losses.numpy())
 
 
 if __name__ == "__main__":
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     n = int(len(test_set) / bs)
 
     model = E2ESingleStepTCN(lookback, pred_steps)
-    model.load_state_dict(torch.load('./E2E_v4_more_epochs_low_lr.pth', map_location=torch.device("cpu")))
+    model.load_state_dict(torch.load('./E2E_v5.pth', map_location=torch.device("cpu")))
     # model.to(device)
     model.train(False)
     model.eval()

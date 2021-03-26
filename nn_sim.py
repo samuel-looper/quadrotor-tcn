@@ -93,7 +93,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
     vel_model = E2ESingleStepTCN(lookback, pred_steps)
-    vel_model.load_state_dict(torch.load('./E2E_v4.pth', map_location=torch.device("cpu")))
+    vel_model.load_state_dict(torch.load('./E2E_v5.pth', map_location=torch.device("cpu")))
     vel_model.train(False)
     vel_model.eval()
 
