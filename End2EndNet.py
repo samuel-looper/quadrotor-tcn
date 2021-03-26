@@ -74,18 +74,21 @@ class E2ESingleStepTCN(nn.Module):
         self.tconv3 = TConvBlock(P + int(L / 2), 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
+        self.dropout3 = torch.nn.Dropout(p=0.2)
         self.tconv4 = TConvBlock(P + int(L / 2), 32, 32, K, d)
         # self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
         self.tconv5 = TConvBlock(P, 32, 64, K, d)
         self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
+        self.dropout5 = torch.nn.Dropout(p=0.2)
         self.tconv6 = TConvBlock(P, 64, 64, K, d)
         # self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
         self.tconv7 = TConvBlock(P, 64, 128, K, d)
         self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
+        self.dropout7 = torch.nn.Dropout(p=0.2)
         self.tconv8 = TConvBlock(P, 128, 6, K, d)
 
     def forward(self, input):
@@ -93,11 +96,11 @@ class E2ESingleStepTCN(nn.Module):
         # print(input.shape)
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = x1 + self.relu2(self.tconv2(x1))
-        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L / 2):])))
+        x3 = self.dropout3(self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L / 2):]))))
         x4 = x3 + self.relu4(self.tconv4(x3))
-        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L / 2):])))
+        x5 = self.dropout5(self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L / 2):]))))
         x6 = x5 + self.relu6(self.tconv6(x5))
-        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x7 = self.dropout7(self.relu7(self.bn7(self.tconv7(x6))))
         x8 = self.tconv8(x7)
         # print(x.shape)
 
@@ -236,4 +239,4 @@ if __name__ == "__main__":
 
     net = E2ESingleStepTCN(L, P).to(device)
     loss = torch.nn.L1Loss()  # Define Mean Square Error Loss
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_L1")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_dropout")
