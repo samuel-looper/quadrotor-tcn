@@ -84,7 +84,7 @@ class TrainSet(Dataset):
                         self.inputs[ind:ind + interval - 1, :, :] = input_state
                         self.outputs[ind:ind + interval - 1, :, :] = output_state
                         ind += interval - 1
-                print(count)
+                # print(count)
         self.inputs = self.inputs[:ind, :, :]
         self.outputs = self.outputs[:ind, :, :]
         # Normalize motor commands
