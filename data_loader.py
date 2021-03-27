@@ -50,19 +50,33 @@ class TrainSet(Dataset):
                 f_motor_cmd = flight["Motors_CMD"][0, 0]  # Commands sent to quadrotor
                 f_vel = flight["Vel"][0, 0]  # Position velocity over time (x, y, z)
                 f_rate = flight["pqr"][0, 0]
-                length = np.floor(f_vel.shape[0]/input_size).astype(int)*input_size
-                if full_set:
-                    state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
-                else:
-                    state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
-                interval = int(length/input_size)
-                state = np.reshape(state, (interval, input_size, chan))
+                if input_size > output_size:
+                    length = np.floor(f_vel.shape[0]/input_size).astype(int)*input_size
+                    if full_set:
+                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    else:
+                        state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
+                    interval = int(length/input_size)
+                    state = np.reshape(state, (interval, input_size, chan))
 
-                output_state = state[1:, :output_size, :]
-                input_state = state[:-1, :, :]
-                self.inputs[ind:ind+interval-1, :, :] = input_state
-                self.outputs[ind:ind+interval-1, :, :] = output_state
-                ind += interval-1
+                    output_state = state[1:, :output_size, :]
+                    input_state = state[:-1, :, :]
+                    self.inputs[ind:ind+interval-1, :, :] = input_state
+                    self.outputs[ind:ind+interval-1, :, :] = output_state
+                    ind += interval-1
+                else:
+                    length = np.floor(f_vel.shape[0] / output_size).astype(int) * output_size
+                    if full_set:
+                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    else:
+                        state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
+                    interval = int(length/output_size)
+                    state = np.reshape(state, (interval, output_size, chan))
+                    output_state = state[1:, :, :]
+                    input_state = state[:-1, -input_size:, :]
+                    self.inputs[ind:ind + interval - 1, :, :] = input_state
+                    self.outputs[ind:ind + interval - 1, :, :] = output_state
+                    ind += interval - 1
         self.inputs = self.inputs[:ind, :, :]
         self.outputs = self.outputs[:ind, :, :]
         # Normalize motor commands
@@ -112,19 +126,35 @@ class TestSet(Dataset):
                 f_motor_cmd = flight["Motors_CMD"][0, 0]  # Commands sent to quadrotor
                 f_vel = flight["Vel"][0, 0]  # Position velocity over time (x, y, z)
                 f_rate = flight["pqr"][0, 0]
-                length = np.floor(f_vel.shape[0]/input_size).astype(int)*input_size
-                if full_set:
-                    state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
-                else:
-                    state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
-                interval = int(length/input_size)
-                state = np.reshape(state, (interval, input_size, chan))
+                if input_size > output_size:
+                    length = np.floor(f_vel.shape[0] / input_size).astype(int) * input_size
+                    if full_set:
+                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :],
+                                           f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    else:
+                        state = np.hstack((f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    interval = int(length / input_size)
+                    state = np.reshape(state, (interval, input_size, chan))
 
-                output_state = state[1:, :output_size, :]
-                input_state = state[:-1, :, :]
-                self.inputs[ind:ind+interval-1, :, :] = input_state
-                self.outputs[ind:ind+interval-1, :, :] = output_state
-                ind += interval-1
+                    output_state = state[1:, :output_size, :]
+                    input_state = state[:-1, :, :]
+                    self.inputs[ind:ind + interval - 1, :, :] = input_state
+                    self.outputs[ind:ind + interval - 1, :, :] = output_state
+                    ind += interval - 1
+                else:
+                    length = np.floor(f_vel.shape[0] / output_size).astype(int) * output_size
+                    if full_set:
+                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :],
+                                           f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    else:
+                        state = np.hstack((f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
+                    interval = int(length / output_size)
+                    state = np.reshape(state, (interval, output_size, chan))
+                    output_state = state[1:, :, :]
+                    input_state = state[:-1, -input_size:, :]
+                    self.inputs[ind:ind + interval - 1, :, :] = input_state
+                    self.outputs[ind:ind + interval - 1, :, :] = output_state
+                    ind += interval - 1
         self.inputs = self.inputs[:ind, :, :]
         self.outputs = self.outputs[:ind, :, :]
         # Normalize motor commands
