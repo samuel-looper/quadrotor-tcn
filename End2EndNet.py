@@ -374,7 +374,7 @@ if __name__ == "__main__":
 
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
-    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator())
+    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
