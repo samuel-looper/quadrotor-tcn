@@ -38,9 +38,10 @@ class TrainSet(Dataset):
         else:
             chan = 10
         self.data = sio.loadmat(filepath)
-        size = np.floor(NUM_TRAIN / input_size).astype(int)
-        self.inputs = np.zeros((size, input_size, chan))
-        self.outputs = np.zeros((size, output_size, chan))
+        self.scale_factor = 5
+        size = np.floor(NUM_TRAIN / max(input_size, output_size)).astype(int)
+        self.inputs = np.zeros((size*self.scale_factor, input_size, chan))
+        self.outputs = np.zeros((size*self.scale_factor, output_size, chan))
         ind = 0
         # Collect all flight data from Matlab matrices
         for count, flight in enumerate(self.data["flights"][0, :]):
@@ -51,32 +52,39 @@ class TrainSet(Dataset):
                 f_vel = flight["Vel"][0, 0]  # Position velocity over time (x, y, z)
                 f_rate = flight["pqr"][0, 0]
                 if input_size > output_size:
-                    length = np.floor(f_vel.shape[0]/input_size).astype(int)*input_size
-                    if full_set:
-                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
-                    else:
-                        state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
-                    interval = int(length/input_size)
-                    state = np.reshape(state, (interval, input_size, chan))
+                    length = np.floor(f_vel.shape[0] / input_size).astype(int) * input_size - input_size
+                    interval = int(length / input_size)
+                    step = np.floor(input_size / self.scale_factor).astype(int)
+                    end = step * self.scale_factor
+                    for offset in range(0, end, step):
+                        if full_set:
+                            state = np.hstack((f_ang[1+offset:length + 1 + offset, :], f_pos[1+ offset:length + 1+ offset, :], f_rate[1+ offset:length + 1+ offset, :], f_vel[offset:length+ offset, :], f_motor_cmd[1+ offset:length + 1+ offset, :]))
+                        else:
+                            state = np.hstack((f_rate[1+offset:length+1+offset, :], f_vel[offset:length+offset, :], f_motor_cmd[1+offset:length+offset+1, :]))
+                        state = np.reshape(state, (interval, input_size, chan))
 
-                    output_state = state[1:, :output_size, :]
-                    input_state = state[:-1, :, :]
-                    self.inputs[ind:ind+interval-1, :, :] = input_state
-                    self.outputs[ind:ind+interval-1, :, :] = output_state
-                    ind += interval-1
+                        output_state = state[1:, :output_size, :]
+                        input_state = state[:-1, :, :]
+                        self.inputs[ind:ind+interval-1, :, :] = input_state
+                        self.outputs[ind:ind+interval-1, :, :] = output_state
+                        ind += interval-1
                 else:
-                    length = np.floor(f_vel.shape[0] / output_size).astype(int) * output_size
-                    if full_set:
-                        state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :], f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
-                    else:
-                        state = np.hstack((f_rate[1:length+1, :], f_vel[:length, :], f_motor_cmd[1:length+1, :]))
-                    interval = int(length/output_size)
-                    state = np.reshape(state, (interval, output_size, chan))
-                    output_state = state[1:, :, :]
-                    input_state = state[:-1, -input_size:, :]
-                    self.inputs[ind:ind + interval - 1, :, :] = input_state
-                    self.outputs[ind:ind + interval - 1, :, :] = output_state
-                    ind += interval - 1
+                    length = np.floor(f_vel.shape[0] / output_size).astype(int) * output_size - output_size
+                    step = np.floor(output_size / self.scale_factor).astype(int)
+                    end = step * self.scale_factor
+                    for offset in range(0, end, step):
+                        if full_set:
+                            state = np.hstack((f_ang[1+offset:length + 1 +offset, :], f_pos[1+offset:length + 1+offset, :], f_rate[1+offset:length + 1+offset, :], f_vel[offset:length+offset, :], f_motor_cmd[1+offset:length + 1+offset, :]))
+                        else:
+                            state = np.hstack((f_rate[1:length+1+offset, :], f_vel[offset:length+offset, :], f_motor_cmd[1+offset:length+offset+1, :]))
+                        interval = int(length/output_size)
+                        state = np.reshape(state, (interval, output_size, chan))
+                        output_state = state[1:, :, :]
+                        input_state = state[:-1, -input_size:, :]
+                        self.inputs[ind:ind + interval - 1, :, :] = input_state
+                        self.outputs[ind:ind + interval - 1, :, :] = output_state
+                        ind += interval - 1
+                print(count)
         self.inputs = self.inputs[:ind, :, :]
         self.outputs = self.outputs[:ind, :, :]
         # Normalize motor commands

@@ -364,7 +364,7 @@ if __name__ == "__main__":
 
     lr = 0.0001
     wd = 0.00005
-    epochs = 100
+    epochs = 50
     bs = 16
     L = 64
     P = 90
