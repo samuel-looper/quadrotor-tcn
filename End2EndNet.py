@@ -57,9 +57,143 @@ class TConvBlock(nn.Module):
         return self.network(x)
 
 
-class E2ESingleStepTCN(nn.Module):
+class E2ESingleStepTCNv3(nn.Module):
     def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCN, self).__init__()
+        super(E2ESingleStepTCNv3, self).__init__()
+        L = lookback
+        P = forward_step
+        K = 8
+        d = 2
+        self.L = L
+        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(L+P, 16, 32, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(32)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(P + int(L/2), 32, 64, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(64)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(P, 64, 6, K, d)
+
+    def forward(self, input):
+        # Assume X: batch by length by channel size
+        # print(input.shape)
+        x = self.relu1(self.bn1(self.tconv1(input)))
+        x = self.relu2(self.bn2(self.tconv2(x)))
+        x = self.relu3(self.bn3(self.tconv3(x[:, :, int(self.L/2):])))
+        x = self.relu4(self.bn4(self.tconv4(x)))
+        x = self.tconv5(x[:, :, int(self.L/2):])
+        # print(x.shape)
+        return x
+
+
+class E2ESingleStepTCNv4(nn.Module):
+    def __init__(self, lookback, forward_step):
+        super(E2ESingleStepTCNv4, self).__init__()
+        L = lookback
+        P = forward_step
+        K = 8
+        d = 2
+        self.L = L
+        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(16)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(P + int(L/2), 16, 32, K, d)
+        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(P, 32, 64, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(64)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(P, 64, 64, K, d)
+        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(P, 64, 128, K, d)
+        self.bn7 = torch.nn.BatchNorm1d(128)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(P, 128, 6, K, d)
+
+    def forward(self, input):
+        # Assume X: batch by length by channel size
+        # print(input.shape)
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L/2):])))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L/2):])))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = self.tconv8(x7)
+        # print(x.shape)
+        return x8
+
+
+class E2ESingleStepTCNv5(nn.Module):
+    def __init__(self, lookback, forward_step):
+        super(E2ESingleStepTCNv5, self).__init__()
+        L = lookback
+        P = forward_step
+        K = 8
+        d = 2
+        self.L = L
+        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(16)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
+        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(P + int(L/2), 32, 64, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(64)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(P + int(L/2), 64, 64, K, d)
+        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(P, 64, 128, K, d)
+        self.bn7 = torch.nn.BatchNorm1d(128)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(P, 128, 128, K, d)
+        self.bn8 = torch.nn.BatchNorm1d(128)
+        self.relu8 = torch.nn.ReLU()
+        self.tconv9 = TConvBlock(P, 128, 256, K, d)
+        self.bn9 = torch.nn.BatchNorm1d(256)
+        self.relu9 = torch.nn.ReLU()
+        self.tconv10 = TConvBlock(P, 256, 6, K, d)
+
+    def forward(self, input):
+        # Assume X: batch by length by channel size
+        # print(input.shape)
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3[:, :, int(self.L/2):] + self.relu4(self.bn4(self.tconv4(x3[:, :, int(self.L/2):])))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6[:, :, int(self.L/2):])))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
+        x10 = self.tconv10(x9)
+        # print(x.shape)
+        return x10
+
+
+class E2ESingleStepTCNv6(nn.Module):
+    def __init__(self, lookback, forward_step):
+        super(E2ESingleStepTCNv6, self).__init__()
         L = lookback
         P = forward_step
         K = 8
@@ -121,6 +255,7 @@ class E2ESingleStepTCN(nn.Module):
         x12 = self.tconv12(x11)
         # print(x.shape)
         return x12
+
 
 class WeightedTemporalLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
@@ -207,16 +342,6 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
                 best_epoch = epoch
                 torch.save(net.state_dict(), "{}.pth".format(name))
 
-            # Plotting
-
-            # plt.plot(train_loss, linewidth=2)
-            # plt.plot(val_loss, linewidth=2)
-            # plt.xlabel("Epoch")
-            # plt.ylabel("MSE Loss")
-            # plt.legend(["Training Loss", "Validation Loss"])
-            # plt.savefig("E2E_v4_train_intermediate.png")
-            # plt.show()
-
     print("Training Complete")
     print("Best Validation Error ({}) at epoch {}".format(best_loss, best_epoch))
 
@@ -241,8 +366,8 @@ if __name__ == "__main__":
     wd = 0.00005
     epochs = 100
     bs = 16
-    L = 128
-    P = 60
+    L = 64
+    P = 90
     tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
 
     train_len = int(len(tv_set) * 0.8)
@@ -251,7 +376,17 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
+    loss = torch.nn.L1Loss()  # Define L1 Loss
 
-    net = E2ESingleStepTCN(L, P).to(device)
-    loss = torch.nn.L1Loss()  # Define Mean Square Error Loss
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_dropout")
+    net = E2ESingleStepTCNv3(L, P).to(device)
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v3")
+
+    net = E2ESingleStepTCNv4(L, P).to(device)
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4")
+
+    net = E2ESingleStepTCNv5(L, P).to(device)
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v5")
+
+    net = E2ESingleStepTCNv6(L, P).to(device)
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v6")
+

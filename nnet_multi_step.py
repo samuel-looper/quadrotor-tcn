@@ -73,7 +73,7 @@ def conv_test(test_loader, net, rate_losses, vel_losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_dropout_L1_test_results_rates.csv", rate_losses.numpy())
+        np.savetxt("E2E_L1_test_results_rates.csv", rate_losses.numpy())
         np.savetxt("E2E_dropout_L1_test_results_vels.csv", vel_losses.numpy())
 
 
