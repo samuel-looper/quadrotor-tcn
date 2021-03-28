@@ -269,7 +269,7 @@ class WeightedTemporalLoss(nn.Module):
 
 
 def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, name):
-
+    print("Name")
     optimizer = torch.optim.Adam(list(net.parameters()), lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
 
     train_loss = []
