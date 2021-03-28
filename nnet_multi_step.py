@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import E2ESingleStepTCN
+from End2EndNet import E2ESingleStepTCNv3, E2ESingleStepTCNv4, E2ESingleStepTCNv5, E2ESingleStepTCNv6
 from torchdiffeq import odeint
 from data_loader import TestSet
 
@@ -47,7 +47,7 @@ def recurrent_test(test_loader, model, rate_losses, vel_losses):
         np.savetxt("MH_v3_multi_test_results_vels.csv", vel_losses.numpy())
 
 
-def conv_test(test_loader, net, rate_losses, vel_losses):
+def conv_test(test_loader, net, rate_losses, vel_losses, name):
     loss_f = nn.MSELoss()
     i = 0
     with torch.no_grad():
@@ -73,8 +73,8 @@ def conv_test(test_loader, net, rate_losses, vel_losses):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("E2E_L1_test_results_rates.csv", rate_losses.numpy())
-        np.savetxt("E2E_dropout_L1_test_results_vels.csv", vel_losses.numpy())
+        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.numpy())
+        np.savetxt("{}_test_error_vels.csv".format(name), vel_losses.numpy())
 
 
 if __name__ == "__main__":
@@ -82,26 +82,84 @@ if __name__ == "__main__":
     # torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
     lookback = 64
-    pred_steps = 60
+    pred_steps = 90
     bs = 1
 
     # Data initialization
     test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
     n = int(len(test_set) / bs)
+    print("Testing Length: {}".format(n))
 
-    model = E2ESingleStepTCN(lookback, pred_steps)
-    model.load_state_dict(torch.load('./End2End_dropout.pth', map_location=torch.device("cpu")))
-    # model.to(device)
+
+    name = "E2E_v3"
+    model = E2ESingleStepTCNv3(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
     model.train(False)
     model.eval()
 
+    vel_losses_v3 = torch.zeros((n, pred_steps))
+    rate_losses_v3 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v3, vel_losses_v3, name)
 
-    print("Testing Length: {}".format(n))
+    name = "E2E_v4"
+    model = E2ESingleStepTCNv4(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
+    model.train(False)
+    model.eval()
 
-    vel_losses = torch.zeros((n, pred_steps))
-    rate_losses = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses, vel_losses)
+    vel_losses_v4 = torch.zeros((n, pred_steps))
+    rate_losses_v4 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v4, vel_losses_v4, name)
+
+    name = "E2E_v5"
+    model = E2ESingleStepTCNv5(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
+    model.train(False)
+    model.eval()
+
+    vel_losses_v5 = torch.zeros((n, pred_steps))
+    rate_losses_v5 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v5, vel_losses_v5, name)
+
+    name = "E2E_v6"
+    model = E2ESingleStepTCNv6(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
+    model.train(False)
+    model.eval()
+
+    vel_losses_v6 = torch.zeros((n, pred_steps))
+    rate_losses_v6 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v6, vel_losses_v6, name)
+
+    time = np.arange(0, 90*10, 10)
+    fig1, ax1 = plt.subplots()
+    ax1.plot(time, np.mean(vel_losses_v3.numpy(), axis=0), linewidth=2)
+    ax1.plot(time, np.mean(vel_losses_v4.numpy(), axis=0), linewidth=2)
+    ax1.plot(time, np.mean(vel_losses_v5.numpy(), axis=0), linewidth=2)
+    ax1.plot(time, np.mean(vel_losses_v6.numpy(), axis=0), linewidth=2)
+    ax1.set_title("End2End-TCN Mean Velocity Prediction Error over Time")
+    ax1.xlabel("Time (ms)")
+    ax1.ylabel("Velocity Prediction Error")
+    ax1.legend(["End2End-TCN v3", "End2End-TCN v4", "End2End-TCN v5", "End2End-TCN v6"])
+    fig1.savefig("E2E_final_vels.png")
+    fig1.show()
+
+    time = np.arange(0, 90 * 10, 10)
+    fig2, ax2 = plt.subplots()
+    ax2.plot(time, np.mean(rate_losses_v3.numpy(), axis=0), linewidth=2)
+    ax2.plot(time, np.mean(rate_losses_v4.numpy(), axis=0), linewidth=2)
+    ax2.plot(time, np.mean(rate_losses_v5.numpy(), axis=0), linewidth=2)
+    ax2.plot(time, np.mean(rate_losses_v6.numpy(), axis=0), linewidth=2)
+    ax2.set_title("End2End-TCN Mean Body Rate Prediction Error over Time")
+    ax2.xlabel("Time (ms)")
+    ax2.ylabel("Body Rate Prediction Error")
+    ax2.legend(["End2End-TCN v3", "End2End-TCN v4", "End2End-TCN v5", "End2End-TCN v6"])
+    fig2.savefig("E2E_final_rates.png")
+    fig2.show()
+
+
+
 
 
 

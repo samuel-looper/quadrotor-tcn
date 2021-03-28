@@ -350,12 +350,11 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
     ax.plot(train_loss, linewidth=2)
     ax.plot(val_loss, linewidth=2)
     ax.set_title("{} Training & Validation Losses".format(name))
-    ax.xlabel("Epoch")
-    ax.ylabel("MSE Loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("MSE Loss")
     ax.legend(["Training Loss", "Validation Loss"])
     fig.savefig("{}.png".format(name))
     fig.show()
-
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
