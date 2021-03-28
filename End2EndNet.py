@@ -346,13 +346,15 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
     print("Best Validation Error ({}) at epoch {}".format(best_loss, best_epoch))
 
     # Plot Final Training Errors
-    plt.plot(train_loss, linewidth=2)
-    plt.plot(val_loss, linewidth=2)
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE Loss")
-    plt.legend(["Training Loss", "Validation Loss"])
-    plt.savefig("{}.png".format(name))
-    plt.show()
+    fig, ax = plt.subplots()
+    ax.plot(train_loss, linewidth=2)
+    ax.plot(val_loss, linewidth=2)
+    ax.set_title("{} Training & Validation Losses".format(name))
+    ax.xlabel("Epoch")
+    ax.ylabel("MSE Loss")
+    ax.legend(["Training Loss", "Validation Loss"])
+    fig.savefig("{}.png".format(name))
+    fig.show()
 
 
 if __name__ == "__main__":
@@ -386,9 +388,9 @@ if __name__ == "__main__":
     net = E2ESingleStepTCNv4(L, P).to(device)
     train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4")
 
-    net = E2ESingleStepTCNv5(L, P).to(device)
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v5")
-
-    net = E2ESingleStepTCNv6(L, P).to(device)
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v6")
+    # net = E2ESingleStepTCNv5(L, P).to(device)
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v5")
+    #
+    # net = E2ESingleStepTCNv6(L, P).to(device)
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v6")
 
