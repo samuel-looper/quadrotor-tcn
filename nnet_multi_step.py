@@ -134,31 +134,76 @@ if __name__ == "__main__":
 
     time = np.arange(0, 90*10, 10)
     fig1, ax1 = plt.subplots()
-    ax1.plot(time, np.mean(vel_losses_v3.numpy(), axis=0), linewidth=2)
-    ax1.plot(time, np.mean(vel_losses_v4.numpy(), axis=0), linewidth=2)
-    ax1.plot(time, np.mean(vel_losses_v5.numpy(), axis=0), linewidth=2)
-    ax1.plot(time, np.mean(vel_losses_v6.numpy(), axis=0), linewidth=2)
+    ax1.plot(time, np.mean(vel_losses_v3.numpy(), axis=0), "o", markersize="2")
+    ax1.plot(time, np.mean(vel_losses_v4.numpy(), axis=0), "o", markersize="2")
+    ax1.plot(time, np.mean(vel_losses_v5.numpy(), axis=0), "o", markersize="2")
+    ax1.plot(time, np.mean(vel_losses_v6.numpy(), axis=0), "o", markersize="2")
     ax1.set_title("End2End-TCN Mean Velocity Prediction Error over Time")
-    ax1.xlabel("Time (ms)")
-    ax1.ylabel("Velocity Prediction Error")
+    ax1.set_xlabel("Time (ms)")
+    ax1.set_ylabel("Velocity Prediction Error")
     ax1.legend(["End2End-TCN v3", "End2End-TCN v4", "End2End-TCN v5", "End2End-TCN v6"])
     fig1.savefig("E2E_final_vels.png")
     fig1.show()
 
-    time = np.arange(0, 90 * 10, 10)
     fig2, ax2 = plt.subplots()
-    ax2.plot(time, np.mean(rate_losses_v3.numpy(), axis=0), linewidth=2)
-    ax2.plot(time, np.mean(rate_losses_v4.numpy(), axis=0), linewidth=2)
-    ax2.plot(time, np.mean(rate_losses_v5.numpy(), axis=0), linewidth=2)
-    ax2.plot(time, np.mean(rate_losses_v6.numpy(), axis=0), linewidth=2)
+    ax2.plot(time, np.mean(rate_losses_v3.numpy(), axis=0), "o", markersize="2")
+    ax2.plot(time, np.mean(rate_losses_v4.numpy(), axis=0), "o", markersize="2")
+    ax2.plot(time, np.mean(rate_losses_v5.numpy(), axis=0), "o", markersize="2")
+    ax2.plot(time, np.mean(rate_losses_v6.numpy(), axis=0), "o", markersize="2")
     ax2.set_title("End2End-TCN Mean Body Rate Prediction Error over Time")
-    ax2.xlabel("Time (ms)")
-    ax2.ylabel("Body Rate Prediction Error")
+    ax2.set_xlabel("Time (ms)")
+    ax2.set_ylabel("Body Rate Prediction Error")
     ax2.legend(["End2End-TCN v3", "End2End-TCN v4", "End2End-TCN v5", "End2End-TCN v6"])
     fig2.savefig("E2E_final_rates.png")
     fig2.show()
 
+    fig3, ax3 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax3.boxplot(rate_losses_v4.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax3.set_title("End2End-TCN v4 Body Rate Prediction Range Over Time")
+    ax3.set_xlabel("Sample #")
+    ax3.set_ylabel("Body Rate Prediction Error")
+    ax3.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
 
+    fig3.savefig("E2E_v4_rate_range.png")
+    fig3.show()
+
+    fig4, ax4 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax4.boxplot(vel_losses_v4.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax4.set_title("End2End-TCN v4 Velocity Prediction Range Over Time")
+    ax4.set_xlabel("Sample #")
+    ax4.set_ylabel("Velocity Prediction Error")
+    ax4.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
+
+    fig4.savefig("E2E_v4_vel_range.png")
+    fig4.show()
+
+    fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax5.boxplot(rate_losses_v6.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax5.set_title("End2End-TCN v6 Body Rate Prediction Range Over Time")
+    ax5.set_xlabel("Sample #")
+    ax5.set_ylabel("Body Rate Prediction Error")
+    ax5.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
+
+    fig5.savefig("E2E_v6_rate_range.png")
+    fig5.show()
+
+    fig6, ax6 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax6.boxplot(vel_losses_v6.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax6.set_title("End2End-TCN v6 Velocity Prediction Range Over Time")
+    ax6.set_xlabel("Sample #")
+    ax6.set_ylabel("Velocity Prediction Error")
+    ax6.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
+
+    fig6.savefig("E2E_v6_vel_range.png")
+    fig6.show()
 
 
 

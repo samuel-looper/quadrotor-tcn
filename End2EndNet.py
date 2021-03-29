@@ -381,15 +381,7 @@ if __name__ == "__main__":
     print("Data Loaded Successfully")
     loss = torch.nn.L1Loss()  # Define L1 Loss
 
-    net = E2ESingleStepTCNv3(L, P).to(device)
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v3")
-
-    net = E2ESingleStepTCNv4(L, P).to(device)
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4")
-
-    # net = E2ESingleStepTCNv5(L, P).to(device)
-    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v5")
-    #
-    # net = E2ESingleStepTCNv6(L, P).to(device)
-    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v6")
+    for L in [2, 4, 8, 16, 32, 64, 128, 256]:
+        net = E2ESingleStepTCNv4(L, P).to(device)
+        train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4_{}".format(L))
 
