@@ -75,7 +75,7 @@ class QuadrotorDynamicsMH(nn.Module):
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
                           [-self.d, self.d, -self.d, self.d]])
-        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]]).type(torch.FloatTensor)
+        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]])
         self.g = torch.tensor([[0], [0], [9.8067]])
 
     def forward(self, t, input):
