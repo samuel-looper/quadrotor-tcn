@@ -22,7 +22,7 @@ if __name__ == "__main__":
     iyy = 0.002  # moment of inertia about Y-axis
     izz = 0.001  # moment of inertia about Z-axis
     lookback = 1
-    pred_steps = 60
+    pred_steps = 90
 
     test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
@@ -53,6 +53,6 @@ if __name__ == "__main__":
         if i % 100 == 0:
             print("Iteration: {}".format(i))
 
-    np.savetxt("E2E_v3_multi_test_results_rates.csv", rate_losses)
-    np.savetxt("E2E_v3_multi_test_results_vels.csv", vel_losses)
+    np.savetxt("WB_test_error_rates.csv", rate_losses)
+    np.savetxt("WB_test_error_vels.csv", vel_losses)
 

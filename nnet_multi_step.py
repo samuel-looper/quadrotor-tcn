@@ -138,8 +138,12 @@ if __name__ == "__main__":
     lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
     lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')
 
+    wb_vels = np.genfromtxt('WB_test_error_vels.csv', delimiter=',')
+    wb_rates = np.genfromtxt('WB_test_error_rates.csv', delimiter=',')
+
     time = np.arange(0, 90*10, 10)
     fig1, ax1 = plt.subplots()
+    ax1.plot(time, wb_vels, "o", markersize=2)
     ax1.plot(time, lstm_hybrid_vels, "o", markersize=2)
     ax1.plot(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
     ax1.plot(time, np.mean(vel_losses_vCH.numpy(), axis=0), "o", markersize=2)
@@ -148,11 +152,12 @@ if __name__ == "__main__":
     ax1.set_title("Mean Velocity Prediction Error over Time Model Comparison")
     ax1.set_xlabel("Time (ms)")
     ax1.set_ylabel("Velocity Prediction Error")
-    ax1.legend(["LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    ax1.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
     fig1.savefig("overall_final_vels.png")
     # fig1.show()
 
     fig2, ax2 = plt.subplots()
+    ax2.plot(time, wb_vels, "o", markersize=2)
     ax2.plot(time, lstm_hybrid_rates, "o", markersize=2)
     ax2.plot(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
     ax2.plot(time, np.mean(rate_losses_vCH.numpy(), axis=0), "o", markersize=2)
@@ -161,34 +166,63 @@ if __name__ == "__main__":
     ax2.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
     ax2.set_xlabel("Time (ms)")
     ax2.set_ylabel("Body Rate Prediction Error")
-    ax2.legend(["LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    ax2.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
     fig2.savefig("overall_final_rates.png")
     # fig2.show()
 
-    # fig3, ax3 = plt.subplots(figsize=(24.0, 6.0))
-    # bplot = ax3.boxplot(rate_losses_v4.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
-    # ax3.set_title("End2End-TCN v4 Body Rate Prediction Range Over Time")
-    # ax3.set_xlabel("Sample #")
-    # ax3.set_ylabel("Body Rate Prediction Error")
-    # ax3.set_ylim([0, 0.1])
-    # for patch in bplot["boxes"]:
-    #     patch.set_facecolor("lightblue")
-    #
-    # fig3.savefig("E2E_v4_rate_range.png")
-    # fig3.show()
-    #
-    # fig4, ax4 = plt.subplots(figsize=(24.0, 6.0))
-    # bplot = ax4.boxplot(vel_losses_v4.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
-    # ax4.set_title("End2End-TCN v4 Velocity Prediction Range Over Time")
-    # ax4.set_xlabel("Sample #")
-    # ax4.set_ylabel("Velocity Prediction Error")
-    # ax4.set_ylim([0, 0.1])
-    # for patch in bplot["boxes"]:
-    #     patch.set_facecolor("lightblue")
-    #
-    # fig4.savefig("E2E_v4_vel_range.png")
-    # fig4.show()
-    #
+    fig3, ax3 = plt.subplots()
+    ax3.semilogy(time, wb_vels, "o", markersize=2)
+    ax3.semilogy(time, lstm_hybrid_vels, "o", markersize=2)
+    ax3.semilogy(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    ax3.semilogy(time, np.mean(vel_losses_vCH.numpy(), axis=0), "o", markersize=2)
+    ax3.semilogy(time, np.mean(vel_losses_vMH.numpy(), axis=0), "o", markersize=2)
+    ax3.semilogy(time, np.mean(vel_losses_vAE.numpy(), axis=0), "o", markersize=2)
+    ax3.set_title("Mean Velocity Prediction Error over Time Model Comparison")
+    ax3.set_xlabel("Time (ms)")
+    ax3.set_ylabel("Velocity Prediction Error")
+    ax3.legend(
+        ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
+    fig3.savefig("overall_final_vels_log.png")
+    # fig1.show()
+
+    fig4, ax4 = plt.subplots()
+    ax4.semilogy(time, wb_vels, "o", markersize=2)
+    ax4.semilogy(time, lstm_hybrid_rates, "o", markersize=2)
+    ax4.semilogy(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    ax4.semilogy(time, np.mean(rate_losses_vCH.numpy(), axis=0), "o", markersize=2)
+    ax4.semilogy(time, np.mean(rate_losses_vMH.numpy(), axis=0), "o", markersize=2)
+    ax4.semilogy(time, np.mean(rate_losses_vAE.numpy(), axis=0), "o", markersize=2)
+    ax4.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
+    ax4.set_xlabel("Time (ms)")
+    ax4.set_ylabel("Body Rate Prediction Error")
+    ax4.legend(
+        ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
+    fig4.savefig("overall_final_rates_log.png")
+
+    fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax5.boxplot(rate_losses_vMH.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax5.set_title("Motor-Hybrid-TCN Body Rate Prediction Range Over Time")
+    ax5.set_xlabel("Sample #")
+    ax5.set_ylabel("Body Rate Prediction Error")
+    ax5.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
+
+    fig5.savefig("MH_rate_range.png")
+    fig5.show()
+
+    fig6, ax6 = plt.subplots(figsize=(24.0, 6.0))
+    bplot = ax6.boxplot(vel_losses_vMH.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    ax6.set_title("Motor-Hybrid-TCN Velocity Prediction Range Over Time")
+    ax6.set_xlabel("Sample #")
+    ax6.set_ylabel("Velocity Prediction Error")
+    ax6.set_ylim([0, 0.1])
+    for patch in bplot["boxes"]:
+        patch.set_facecolor("lightblue")
+
+    fig4.savefig("MH_vel_range.png")
+    fig4.show()
+
     # fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
     # bplot = ax5.boxplot(rate_losses_v6.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
     # ax5.set_title("End2End-TCN v6 Body Rate Prediction Range Over Time")
