@@ -45,8 +45,8 @@ def recurrent_test(test_loader, model, rate_losses, vel_losses, name, device):
             i += 1
             print("Sample #{}".format(i))
 
-        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.numpy())
-        np.savetxt("{}_test_results_vels.csv".format(name), vel_losses.numpy())
+        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.cpu().numpy())
+        np.savetxt("{}_test_results_vels.csv".format(name), vel_losses.cpu().numpy())
 
 
 def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
@@ -75,8 +75,8 @@ def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
-        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.numpy())
-        np.savetxt("{}_test_error_vels.csv".format(name), vel_losses.numpy())
+        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.cpu().numpy())
+        np.savetxt("{}_test_error_vels.csv".format(name), vel_losses.cpu().numpy())
 
 
 if __name__ == "__main__":
