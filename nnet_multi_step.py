@@ -99,24 +99,6 @@ if __name__ == "__main__":
     n = int(len(test_set) / bs)
     print("Testing Length: {}".format(n))
 
-    name = "E2E_v4"
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
-    model.train(False)
-    model.eval()
-    vel_losses_vE2E = torch.zeros((n, pred_steps))
-    rate_losses_vE2E = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name, device)
-
-    name = "Combined-Hybrid"
-    model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
-    model.train(False)
-    model.eval()
-    vel_losses_vCH = torch.zeros((n, pred_steps))
-    rate_losses_vCH = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name, device)
-
     name = "Motor-Hybrid"
     model = QuadrotorDynamicsMH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
     model.load_state_dict(torch.load('./{}.pth'.format(name)))
@@ -134,6 +116,24 @@ if __name__ == "__main__":
     vel_losses_vAE = torch.zeros((n, pred_steps))
     rate_losses_vAE = torch.zeros((n, pred_steps))
     recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name, device)
+
+    name = "E2E_v4"
+    model = E2ESingleStepTCNv4(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    model.train(False)
+    model.eval()
+    vel_losses_vE2E = torch.zeros((n, pred_steps))
+    rate_losses_vE2E = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name, device)
+
+    name = "Combined-Hybrid"
+    model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    model.train(False)
+    model.eval()
+    vel_losses_vCH = torch.zeros((n, pred_steps))
+    rate_losses_vCH = torch.zeros((n, pred_steps))
+    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name, device)
 
     lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
     lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')

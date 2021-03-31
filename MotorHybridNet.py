@@ -10,6 +10,8 @@ from torch.utils.data import DataLoader
 from End2EndNet import TConvBlock
 
 PATH = './MH.pth'
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 class MotorHybrid(nn.Module):
@@ -67,7 +69,7 @@ class QuadrotorDynamicsMH(nn.Module):
         self.kt = kt
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
-        self.motor_net = MotorHybrid(lookback, pred_steps)
+        self.motor_net = MotorHybrid(lookback, pred_steps).to(device)
         # torchsummary.summary(self.motor_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],

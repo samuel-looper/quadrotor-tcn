@@ -10,7 +10,8 @@ from End2EndNet import TConvBlock
 import torchsummary
 
 PATH = './FH_v4.pth'
-# torch.set_default_tensor_type("torch.cuda.FloatTensor")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 class AccelErrorNet(nn.Module):
     # Deep Neural Network for motor thrust prediction

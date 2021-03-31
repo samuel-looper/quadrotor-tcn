@@ -10,6 +10,8 @@ from torch.utils.data import DataLoader
 from End2EndNet import TConvBlock
 
 PATH = './AE.pth'
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 class AccelErrorNet(nn.Module):
@@ -66,7 +68,7 @@ class QuadrotorDynamicsAE(nn.Module):
         self.kt = kt
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
-        self.accel_net = AccelErrorNet(lookback, pred_steps)
+        self.accel_net = AccelErrorNet(lookback, pred_steps).to(device)
         # torchsummary.summary(self.accel_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
