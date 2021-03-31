@@ -10,15 +10,15 @@ from torchdiffeq import odeint
 from data_loader import TestSet
 
 
-def recurrent_test(test_loader, model, rate_losses, vel_losses, name):
+def recurrent_test(test_loader, model, rate_losses, vel_losses, name, device):
     loss_f = nn.L1Loss()
     i = 0
     j = 0
 
     with torch.no_grad():
         for data in test_loader:
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
             # label_n = label.numpy()
             pred = torch.zeros((bs, 16, 1))
             for j in range(pred_steps):
@@ -49,14 +49,14 @@ def recurrent_test(test_loader, model, rate_losses, vel_losses, name):
         np.savetxt("{}_test_results_vels.csv".format(name), vel_losses.numpy())
 
 
-def conv_test(test_loader, net, rate_losses, vel_losses, name):
+def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
     loss_f = nn.MSELoss()
     i = 0
     with torch.no_grad():
         for data in test_loader:
             j = 0
-            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+            input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
             output = label[:, 6:12, :]
             feedforward = torch.zeros(label.shape)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     model.eval()
     vel_losses_vE2E = torch.zeros((n, pred_steps))
     rate_losses_vE2E = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name)
+    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name, device)
 
     name = "Combined-Hybrid"
     model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     model.eval()
     vel_losses_vCH = torch.zeros((n, pred_steps))
     rate_losses_vCH = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name)
+    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name, device)
 
     name = "Motor-Hybrid"
     model = QuadrotorDynamicsMH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     model.eval()
     vel_losses_vMH = torch.zeros((n, pred_steps))
     rate_losses_vMH = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vMH, vel_losses_vMH, name)
+    recurrent_test(test_loader, model, rate_losses_vMH, vel_losses_vMH, name, device)
 
     name = "AccelError-Hybrid"
     model = QuadrotorDynamicsAE(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     model.eval()
     vel_losses_vAE = torch.zeros((n, pred_steps))
     rate_losses_vAE = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name)
+    recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name, device)
 
     lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
     lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')
