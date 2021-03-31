@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from End2EndNet import TConvBlock
 import torchsummary
 
-PATH = './FH_v3.pth'
+PATH = './FH_v4.pth'
 # torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 class AccelErrorNet(nn.Module):
@@ -20,7 +20,7 @@ class AccelErrorNet(nn.Module):
         P = pred_steps
         K = 8
         d = 2
-        t = 28
+        t = 54
         self.L = L
         self.P = P
         self.t = t
@@ -33,12 +33,15 @@ class AccelErrorNet(nn.Module):
         self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(t, 32, 16, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(16)
+        self.tconv4 = TConvBlock(t, 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear(t * 16, 128)
+        self.tconv5 = TConvBlock(t, 32, 32, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(32)
         self.relu5 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(128, 6)
+        self.fc1 = torch.nn.Linear(t * 32, 144)
+        self.relu6 = torch.nn.ReLU()
+        self.fc2 = torch.nn.Linear(144, 6)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
@@ -47,8 +50,9 @@ class AccelErrorNet(nn.Module):
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
         x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
+        x = self.relu5(self.bn5(self.tconv5(x)))
         x = torch.flatten(x, 1, 2)
-        x = self.relu5(self.fc1(x))
+        x = self.relu6(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -61,7 +65,7 @@ class MotorHybrid(nn.Module):
         P = pred_steps
         K = 8
         d = 2
-        t = 28
+        t = 54
         self.L = L
         self.P = P
         self.t = t
@@ -74,12 +78,15 @@ class MotorHybrid(nn.Module):
         self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(t, 32, 16, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(16)
+        self.tconv4 = TConvBlock(t, 32, 32, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear(t * 16, 128)
+        self.tconv5 = TConvBlock(t, 32, 32, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(32)
         self.relu5 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(128, 4)
+        self.fc1 = torch.nn.Linear(t * 32, 144)
+        self.relu6 = torch.nn.ReLU()
+        self.fc2 = torch.nn.Linear(144, 4)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
@@ -87,10 +94,10 @@ class MotorHybrid(nn.Module):
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
-        x = self.tconv4(x[:, :, (self.L + self.P - self.t):])
-        x = self.relu4(self.bn4(x))
+        x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
+        x = self.relu5(self.bn5(self.tconv5(x)))
         x = torch.flatten(x, 1, 2)
-        x = self.relu5(self.fc1(x))
+        x = self.relu6(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -104,8 +111,8 @@ class QuadrotorDynamicsFH(nn.Module):
         self.kt = kt
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
-        self.accel_net = AccelErrorNet(lookback, pred_steps)
-        self.motor_net = MotorHybrid(lookback, pred_steps)
+        self.accel_net = AccelErrorNet(lookback, pred_steps).to(device)
+        self.motor_net = MotorHybrid(lookback, pred_steps).to(device)
         # torchsummary.summary(self.accel_net, (16, 65))
         # torchsummary.summary(self.motor_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
@@ -155,8 +162,8 @@ class QuadrotorDynamicsFH(nn.Module):
 
 
 if __name__ == "__main__":
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
@@ -181,7 +188,7 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
 
-    func = QuadrotorDynamics(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
+    func = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps)
     # func.to(device)
     optimizer = optim.Adam(list(func.parameters()), lr=lr)
     loss_f = nn.MSELoss()
@@ -203,9 +210,9 @@ if __name__ == "__main__":
 
         for data in train_loader:
             optimizer.zero_grad()
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
             n_raw = raw_input.numpy()
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
             n_label = label.numpy()
             output_gt = label[0, 6:12, 0]
             feedforward = torch.zeros(label.shape)
@@ -239,8 +246,8 @@ if __name__ == "__main__":
         i = 0
         with torch.no_grad():
             for data in val_loader:
-                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load Input data
-                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)#.to(device)  # Load labels
+                raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
+                label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
                 output_gt = label[0, 6:12, 0]
                 feedforward = torch.zeros(label.shape)
                 feedforward[:, -4:, :] = label[:, -4:, :]
