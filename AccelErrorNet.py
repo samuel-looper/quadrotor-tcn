@@ -74,7 +74,7 @@ class QuadrotorDynamicsAE(nn.Module):
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
                           [-self.d, self.d, -self.d, self.d]])
-        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]]).type(torch.FloatTensor)
+        self.select = torch.tensor([[0, 0, 0, 0], [0, 0, 0, 0], [1/self.m, 0, 0, 0]])
         self.g = torch.tensor([[0], [0], [9.8067]])
         self.thrust_mat = torch.tensor([[0.0011, -0.0069, 2.2929],  # Vectorized thrust calculation coef. matrix
                                       [-0.0005, -0.0088, 2.5556],
