@@ -20,7 +20,7 @@ class AccelErrorNet(nn.Module):
         P = pred_steps
         K = 8
         d = 2
-        t = 54
+        t = 28
         self.L = L
         self.P = P
         self.t = t
@@ -33,15 +33,12 @@ class AccelErrorNet(nn.Module):
         self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(t, 32, 32, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.tconv4 = TConvBlock(t, 32, 16, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(16)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(t, 32, 32, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.fc1 = torch.nn.Linear(t * 16, 128)
         self.relu5 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear(t * 32, 144)
-        self.relu6 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(144, 6)
+        self.fc2 = torch.nn.Linear(128, 6)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
@@ -50,9 +47,8 @@ class AccelErrorNet(nn.Module):
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
         x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
-        x = self.relu5(self.bn5(self.tconv5(x)))
         x = torch.flatten(x, 1, 2)
-        x = self.relu6(self.fc1(x))
+        x = self.relu5(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -65,7 +61,7 @@ class MotorHybrid(nn.Module):
         P = pred_steps
         K = 8
         d = 2
-        t = 54
+        t = 28
         self.L = L
         self.P = P
         self.t = t
@@ -78,15 +74,12 @@ class MotorHybrid(nn.Module):
         self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(t, 32, 32, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.tconv4 = TConvBlock(t, 32, 16, K, d)
+        self.bn4 = torch.nn.BatchNorm1d(16)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(t, 32, 32, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.fc1 = torch.nn.Linear(t * 16, 128)
         self.relu5 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear(t * 32, 144)
-        self.relu6 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(144, 4)
+        self.fc2 = torch.nn.Linear(128, 4)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
@@ -94,15 +87,15 @@ class MotorHybrid(nn.Module):
         x = self.relu1(self.bn1(self.tconv1(input)))
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
-        x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
-        x = self.relu5(self.bn5(self.tconv5(x)))
+        x = self.tconv4(x[:, :, (self.L + self.P - self.t):])
+        x = self.relu4(self.bn4(x))
         x = torch.flatten(x, 1, 2)
-        x = self.relu6(self.fc1(x))
+        x = self.relu5(self.fc1(x))
         x = self.fc2(x)
         return x
 
 
-class QuadrotorDynamics(nn.Module):
+class QuadrotorDynamicsFH(nn.Module):
     def __init__(self, l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps):
         super().__init__()
         self.l = l
@@ -113,8 +106,8 @@ class QuadrotorDynamics(nn.Module):
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
         self.accel_net = AccelErrorNet(lookback, pred_steps)
         self.motor_net = MotorHybrid(lookback, pred_steps)
-        torchsummary.summary(self.accel_net, (16, 65))
-        torchsummary.summary(self.motor_net, (16, 65))
+        # torchsummary.summary(self.accel_net, (16, 65))
+        # torchsummary.summary(self.motor_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],

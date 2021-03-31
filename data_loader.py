@@ -38,7 +38,7 @@ class TrainSet(Dataset):
         else:
             chan = 10
         self.data = sio.loadmat(filepath)
-        self.scale_factor = 5
+        self.scale_factor = 1
         size = np.floor(NUM_TRAIN / max(input_size, output_size)).astype(int)
         self.inputs = np.zeros((size*self.scale_factor, input_size, chan))
         self.outputs = np.zeros((size*self.scale_factor, output_size, chan))

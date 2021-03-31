@@ -2,12 +2,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import E2ESingleStepTCNv3, E2ESingleStepTCNv4, E2ESingleStepTCNv5, E2ESingleStepTCNv6
+from End2EndNet import E2ESingleStepTCNv4
+from FullHybridNet import QuadrotorDynamicsFH
+from MotorHybridNet import QuadrotorDynamicsMH
+from AccelErrorNet import QuadrotorDynamicsAE
 from torchdiffeq import odeint
 from data_loader import TestSet
 
 
-def recurrent_test(test_loader, model, rate_losses, vel_losses):
+def recurrent_test(test_loader, model, rate_losses, vel_losses, name):
     loss_f = nn.L1Loss()
     i = 0
     j = 0
@@ -40,11 +43,10 @@ def recurrent_test(test_loader, model, rate_losses, vel_losses):
                 vel_losses[i, j] = rate_loss
 
             i += 1
-            if i % 10 == 0:
-                print("Sample #{}".format(i))
+            print("Sample #{}".format(i))
 
-        np.savetxt("MH_v3_multi_test_results_rates.csv", rate_losses.numpy())
-        np.savetxt("MH_v3_multi_test_results_vels.csv", vel_losses.numpy())
+        np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.numpy())
+        np.savetxt("{}_test_results_vels.csv".format(name), vel_losses.numpy())
 
 
 def conv_test(test_loader, net, rate_losses, vel_losses, name):
@@ -78,163 +80,90 @@ def conv_test(test_loader, net, rate_losses, vel_losses, name):
 
 
 if __name__ == "__main__":
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
-
-    lookback = 2
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_2"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
-    model.train(False)
-    model.eval()
-    vel_losses_v4_2 = torch.zeros((n, pred_steps))
-    rate_losses_v4_2 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_2, vel_losses_v4_2, name)
-
-    lookback = 4
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_4"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
-    model.train(False)
-    model.eval()
-    vel_losses_v4_4 = torch.zeros((n, pred_steps))
-    rate_losses_v4_4 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_4, vel_losses_v4_4, name)
-
-    lookback = 8
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_8"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
-    model.train(False)
-    model.eval()
-    vel_losses_v4_8 = torch.zeros((n, pred_steps))
-    rate_losses_v4_8 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_8, vel_losses_v4_8, name)
-
-    lookback = 16
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_16"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
-    model.train(False)
-    model.eval()
-    vel_losses_v4_16 = torch.zeros((n, pred_steps))
-    rate_losses_v4_16 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_16, vel_losses_v4_16, name)
-
-    lookback = 32
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_32"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
-    model.train(False)
-    model.eval()
-    vel_losses_v4_32 = torch.zeros((n, pred_steps))
-    rate_losses_v4_32 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_32, vel_losses_v4_32, name)
-
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    l = 0.211  # length (m)
+    d = 1.7e-5  # blade parameter
+    m = 1  # mass (kg)
+    kt = 2.35e-14  # translational drag coefficient
+    kr = 0.0099  # rotational drag coefficient
+    ixx = 0.002  # moment of inertia about X-axis
+    iyy = 0.002  # moment of inertia about Y-axis
+    izz = 0.001  # moment of inertia about Z-axis
     lookback = 64
     pred_steps = 90
     bs = 1
-    name = "E2E_v4_64"
     # Data initialization
     test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
     n = int(len(test_set) / bs)
     print("Testing Length: {}".format(n))
+
+    name = "E2E_v4"
     model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
     model.train(False)
     model.eval()
-    vel_losses_v4_64 = torch.zeros((n, pred_steps))
-    rate_losses_v4_64 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_64, vel_losses_v4_64, name)
+    vel_losses_vE2E = torch.zeros((n, pred_steps))
+    rate_losses_vE2E = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name)
 
-    lookback = 128
-    pred_steps = 90
-    bs = 1
-    name = "E2E_v4_128"
-    # Data initialization
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
-    print("Testing Length: {}".format(n))
-    model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=torch.device("cpu")))
+    name = "Combined-Hybrid"
+    model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
     model.train(False)
     model.eval()
-    vel_losses_v4_128 = torch.zeros((n, pred_steps))
-    rate_losses_v4_128 = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_v4_128, vel_losses_v4_128, name)
+    vel_losses_vCH = torch.zeros((n, pred_steps))
+    rate_losses_vCH = torch.zeros((n, pred_steps))
+    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name)
 
+    name = "Motor-Hybrid"
+    model = QuadrotorDynamicsMH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    model.train(False)
+    model.eval()
+    vel_losses_vMH = torch.zeros((n, pred_steps))
+    rate_losses_vMH = torch.zeros((n, pred_steps))
+    recurrent_test(test_loader, model, rate_losses_vMH, vel_losses_vMH, name)
 
+    name = "AccelError-Hybrid"
+    model = QuadrotorDynamicsAE(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    model.train(False)
+    model.eval()
+    vel_losses_vAE = torch.zeros((n, pred_steps))
+    rate_losses_vAE = torch.zeros((n, pred_steps))
+    recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name)
 
+    lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
+    lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')
 
     time = np.arange(0, 90*10, 10)
     fig1, ax1 = plt.subplots()
-    ax1.plot(time, np.mean(vel_losses_v4_2.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_4.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_8.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_16.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_32.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_64.numpy(), axis=0))
-    ax1.plot(time, np.mean(vel_losses_v4_128.numpy(), axis=0))
-
-    ax1.set_title("End2End-TCN v4 Mean Velocity Prediction Error over Time")
+    ax1.plot(time, lstm_hybrid_vels, "o", markersize=2)
+    ax1.plot(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    ax1.plot(time, np.mean(vel_losses_vCH.numpy(), axis=0), "o", markersize=2)
+    ax1.plot(time, np.mean(vel_losses_vMH.numpy(), axis=0), "o", markersize=2)
+    ax1.plot(time, np.mean(vel_losses_vAE.numpy(), axis=0), "o", markersize=2)
+    ax1.set_title("Mean Velocity Prediction Error over Time Model Comparison")
     ax1.set_xlabel("Time (ms)")
     ax1.set_ylabel("Velocity Prediction Error")
-    ax1.legend(["Lookback window = 2", "Lookback window = 4", "Lookback window = 8", "Lookback window = 16", "Lookback window = 32", "Lookback window = 64", "Lookback window = 128"])
-    fig1.savefig("E2E_final_vels_lookback_window.png")
-    fig1.show()
+    ax1.legend(["LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    fig1.savefig("overall_final_vels.png")
+    # fig1.show()
 
     fig2, ax2 = plt.subplots()
-    ax2.plot(time, np.mean(rate_losses_v4_2.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_4.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_8.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_16.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_32.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_64.numpy(), axis=0))
-    ax2.plot(time, np.mean(rate_losses_v4_128.numpy(), axis=0))
-    ax2.set_title("End2End-TCN v4 Mean Body Rate Prediction Error over Time")
+    ax2.plot(time, lstm_hybrid_rates, "o", markersize=2)
+    ax2.plot(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    ax2.plot(time, np.mean(rate_losses_vCH.numpy(), axis=0), "o", markersize=2)
+    ax2.plot(time, np.mean(rate_losses_vMH.numpy(), axis=0), "o", markersize=2)
+    ax2.plot(time, np.mean(rate_losses_vAE.numpy(), axis=0), "o", markersize=2)
+    ax2.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
     ax2.set_xlabel("Time (ms)")
     ax2.set_ylabel("Body Rate Prediction Error")
-    ax2.legend(["Lookback window = 2", "Lookback window = 4", "Lookback window = 8", "Lookback window = 16",
-                "Lookback window = 32", "Lookback window = 64", "Lookback window = 128"])
-    fig2.savefig("E2E_final_rates_lookback_window.png")
-    fig2.show()
+    ax2.legend(["LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    fig2.savefig("overall_final_rates.png")
+    # fig2.show()
 
     # fig3, ax3 = plt.subplots(figsize=(24.0, 6.0))
     # bplot = ax3.boxplot(rate_losses_v4.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)

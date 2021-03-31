@@ -27,45 +27,37 @@ class AccelErrorNet(nn.Module):
         self.tconv1 = TConvBlock(L + P, 16, 16, K, d)
         self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(16)
+        self.tconv2 = TConvBlock(L + P, 16, 32, K, d)
+        self.bn2 = torch.nn.BatchNorm1d(32)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
+        self.tconv3 = TConvBlock(L + P, 32, 32, K, d)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(L + P, 32, 32, K, d)
+        self.tconv4 = TConvBlock(t, 32, 32, K, d)
         self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(L + P, 32, 32, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.tconv5 = TConvBlock(t, 32, 16, K, d)
+        self.bn5 = torch.nn.BatchNorm1d(16)
         self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(t, 32, 64, K, d)
-        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.fc1 = torch.nn.Linear(t * 16, 128)
         self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(t, 64, 32, K, d)
-        self.bn7 = torch.nn.BatchNorm1d(32)
-        self.relu7 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear(t * 32, 256)
-        self.relu8 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(256, 6)
+        self.fc2 = torch.nn.Linear(128, 6)
 
     def forward(self, input):
         # Assume X: batch by length by channel size
         # print(input.shape)
-        x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.relu6(self.bn6(self.tconv6(x5[:, :, (self.L + self.P - self.t):])))
-        x7 = self.relu7(self.bn7(self.tconv7(x6)))
-        x = torch.flatten(x7, 1, 2)
-        x = self.relu8(self.fc1(x))
+        x = self.relu1(self.bn1(self.tconv1(input)))
+        x = self.relu2(self.bn2(self.tconv2(x)))
+        x = self.relu3(self.bn3(self.tconv3(x)))
+        x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.L + self.P - self.t):])))
+        x = self.relu5(self.bn5(self.tconv5(x)))
+        x = torch.flatten(x, 1, 2)
+        x = self.relu6(self.fc1(x))
         x = self.fc2(x)
         return x
 
 
-class QuadrotorDynamics(nn.Module):
+class QuadrotorDynamicsAE(nn.Module):
     def __init__(self, l, m, d, kt, kr, ixx, iyy, izz, lookback, pred_steps):
         super().__init__()
         self.l = l
@@ -75,7 +67,7 @@ class QuadrotorDynamics(nn.Module):
         self.kr = kr
         self.I = torch.tensor([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
         self.accel_net = AccelErrorNet(lookback, pred_steps)
-        torchsummary.summary(self.accel_net, (16, 65))
+        # torchsummary.summary(self.accel_net, (16, 65))
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
