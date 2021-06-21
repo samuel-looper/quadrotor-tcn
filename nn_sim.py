@@ -2,17 +2,17 @@ from data_loader import TestSet
 import numpy as np
 from torch.utils.data import DataLoader
 import torch
-from End2EndNet import E2ESingleStepTCN
+from End2EndNet import E2ESingleStepTCNv4
 from scipy import integrate
 from matplotlib import pyplot as plt
 
 
-
-def plot_flights(pred, label):
+def plot_flights(pred, label, image_count):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     ax.plot3D(pred[:, 3], pred[:, 4], pred[:, 5], 'blue', linewidth=1)
     ax.plot3D(label[:, 3], label[:, 4], label[:, 5], 'red', linewidth=1)
+    ax.legend(["Predicted Flight Path", "Actual Flight Path"])
     ax.set_title('Flight Path')
 
     xlower = np.amin(label[:, 3]) - np.abs(np.amin(label[:, 3])) * 0.1
@@ -43,7 +43,7 @@ def plot_flights(pred, label):
     ax.set_ylabel('Y-position (m)')
     ax.set_zlabel('Z-position (m)')
     plt.show()
-    plt.savefig('neural_net_sim.png')
+    fig.savefig('neural_net_sim{}.png'.format(image_count))
 
 class BlackBoxModel:
     def __init__(self, vels, init_state=np.zeros((6, 1))):
@@ -87,15 +87,20 @@ class BlackBoxModel:
 if __name__ == "__main__":
 
     lookback = 64
-    pred_steps = 60
+    pred_steps = 90
 
     test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
-    vel_model = E2ESingleStepTCN(lookback, pred_steps)
-    vel_model.load_state_dict(torch.load('./E2E_v5.pth', map_location=torch.device("cpu")))
+    vel_model = E2ESingleStepTCNv4(lookback, pred_steps)
+    vel_model.load_state_dict(torch.load('./E2E_v4.pth', map_location=torch.device("cpu")))
     vel_model.train(False)
     vel_model.eval()
+    outliers = 0
+    count = 0
+    image_count = 0
+    outlier_range = np.zeros((16, 1))
+    inlier_range = np.zeros((16))
 
     with torch.no_grad():
         for data in test_loader:
@@ -123,6 +128,22 @@ if __name__ == "__main__":
             state_rec[pred_steps, 3:6] = black_box_model.pos
 
             state_label = label[0, :12, :].numpy().T
-            state_error = (state_rec[:60, :] - state_label) ** 2
-            plot_flights(state_rec[:60, :], state_label)
-            print(np.amax(state_error[:, 3:6]))
+            state_error = (state_rec[:pred_steps, :] - state_label) ** 2
+            full_sequence = np.concatenate((raw_input.numpy(), label.numpy()), axis=2)
+            inlier_range += full_sequence[0, :, :].ptp(axis=1)/len(test_set)
+            count+=1
+            if count % 10 == 0:
+                print(count)
+            if state_error.sum() > 50:
+                ranges = np.expand_dims(full_sequence[0, :, :].ptp(axis=1), axis=1)
+                outlier_range = np.concatenate((outlier_range, ranges), axis=1)
+
+
+            if state_error.sum() < 1:
+                print("inliner")
+                image_count += 1
+                plot_flights(state_rec[:pred_steps, :], state_label, image_count)
+
+
+    np.savetxt("outlier ranges.csv", outlier_range)
+    print(inlier_range)

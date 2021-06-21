@@ -2,12 +2,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import E2ESingleStepTCNv4
-from FullHybridNet import QuadrotorDynamicsFH
-from MotorHybridNet import QuadrotorDynamicsMH
-from AccelErrorNet import QuadrotorDynamicsAE
+from End2EndNet import E2ESingleStepTCNv3, E2ESingleStepTCNv4, E2ESingleStepTCNv5, E2ESingleStepTCNv6
+# from FullHybridNet import QuadrotorDynamicsFH
+# from MotorHybridNet import QuadrotorDynamicsMH
+# from AccelErrorNet import QuadrotorDynamicsAE
 from torchdiffeq import odeint
 from data_loader import TestSet
+from time import perf_counter as count
 
 
 def recurrent_test(test_loader, model, rate_losses, vel_losses, name, device):
@@ -52,6 +53,7 @@ def recurrent_test(test_loader, model, rate_losses, vel_losses, name, device):
 def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
     loss_f = nn.MSELoss()
     i = 0
+    time = []
     with torch.no_grad():
         for data in test_loader:
             j = 0
@@ -63,7 +65,10 @@ def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
             feedforward[:, 12:, :] = label[:, 12:, :]
             input = torch.cat((input, feedforward), 2)
 
+            start = count()
             pred = net(input)
+            end = count()
+            time.append(end-start)
             for j in range(pred_steps):
                 rate_loss = loss_f(output[0, :3, j], pred[0, :3, j]).item()
                 vel_loss = loss_f(output[0, 3:, j], pred[0, 3:, j]).item()
@@ -75,13 +80,14 @@ def conv_test(test_loader, net, rate_losses, vel_losses, name, device):
             if i % 10 == 0:
                 print("Sample #{}".format(i))
 
+        print("Average processing time: {} seconds".format(np.asarray(time).mean()))
         np.savetxt("{}_test_error_rates.csv".format(name), rate_losses.cpu().numpy())
         np.savetxt("{}_test_error_vels.csv".format(name), vel_losses.cpu().numpy())
 
 
 if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
+    # torch.set_default_tensor_type("torch.cuda.FloatTensor")
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
@@ -99,129 +105,165 @@ if __name__ == "__main__":
     n = int(len(test_set) / bs)
     print("Testing Length: {}".format(n))
 
-    name = "Motor-Hybrid"
-    model = QuadrotorDynamicsMH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
-    model.train(False)
-    model.eval()
-    vel_losses_vMH = torch.zeros((n, pred_steps))
-    rate_losses_vMH = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vMH, vel_losses_vMH, name, device)
+    # name = "Motor-Hybrid"
+    # model = QuadrotorDynamicsMH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    # model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    # model.train(False)
+    # model.eval()
+    # vel_losses_vMH = torch.zeros((n, pred_steps))
+    # rate_losses_vMH = torch.zeros((n, pred_steps))
+    # recurrent_test(test_loader, model, rate_losses_vMH, vel_losses_vMH, name, device)
+    #
+    # name = "AccelError-Hybrid"
+    # model = QuadrotorDynamicsAE(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    # model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    # model.train(False)
+    # model.eval()
+    # vel_losses_vAE = torch.zeros((n, pred_steps))
+    # rate_losses_vAE = torch.zeros((n, pred_steps))
+    # recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name, device)
 
-    name = "AccelError-Hybrid"
-    model = QuadrotorDynamicsAE(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    name = "E2E_v3"
+    model = E2ESingleStepTCNv3(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
     model.train(False)
     model.eval()
-    vel_losses_vAE = torch.zeros((n, pred_steps))
-    rate_losses_vAE = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vAE, vel_losses_vAE, name, device)
+    vel_losses_v3 = torch.zeros((n, pred_steps))
+    rate_losses_v3 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v3, vel_losses_v3, name, device)
 
     name = "E2E_v4"
     model = E2ESingleStepTCNv4(lookback, pred_steps)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
     model.train(False)
     model.eval()
-    vel_losses_vE2E = torch.zeros((n, pred_steps))
-    rate_losses_vE2E = torch.zeros((n, pred_steps))
-    conv_test(test_loader, model, rate_losses_vE2E, vel_losses_vE2E, name, device)
+    vel_losses_v4 = torch.zeros((n, pred_steps))
+    rate_losses_v4 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v4, vel_losses_v4, name, device)
 
-    name = "Combined-Hybrid"
-    model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
-    model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    name = "E2E_v5"
+    model = E2ESingleStepTCNv5(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
     model.train(False)
     model.eval()
-    vel_losses_vCH = torch.zeros((n, pred_steps))
-    rate_losses_vCH = torch.zeros((n, pred_steps))
-    recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name, device)
+    vel_losses_v5 = torch.zeros((n, pred_steps))
+    rate_losses_v5 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v5, vel_losses_v5, name, device)
 
-    lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
-    lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')
+    name = "E2E_v6"
+    model = E2ESingleStepTCNv6(lookback, pred_steps)
+    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
+    model.train(False)
+    model.eval()
+    vel_losses_v6 = torch.zeros((n, pred_steps))
+    rate_losses_v6 = torch.zeros((n, pred_steps))
+    conv_test(test_loader, model, rate_losses_v6, vel_losses_v6, name, device)
 
-    wb_vels = np.genfromtxt('WB_test_error_vels.csv', delimiter=',')
-    wb_rates = np.genfromtxt('WB_test_error_rates.csv', delimiter=',')
+    # name = "Combined-Hybrid"
+    # model = QuadrotorDynamicsFH(l, m, d, kt, kr, ixx, iyy, izz, lookback, 1)
+    # model.load_state_dict(torch.load('./{}.pth'.format(name)))
+    # model.train(False)
+    # model.eval()
+    # vel_losses_vCH = torch.zeros((n, pred_steps))
+    # rate_losses_vCH = torch.zeros((n, pred_steps))
+    # recurrent_test(test_loader, model, rate_losses_vCH, vel_losses_vCH, name, device)
 
-    time = np.arange(0, 90*10, 10)
-    fig1, ax1 = plt.subplots()
-    ax1.plot(time, wb_vels, "o", markersize=2)
-    ax1.plot(time, lstm_hybrid_vels, "o", markersize=2)
-    ax1.plot(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
-    ax1.plot(time, np.mean(vel_losses_vCH.numpy(), axis=0), "o", markersize=2)
-    ax1.plot(time, np.mean(vel_losses_vMH.numpy(), axis=0), "o", markersize=2)
-    ax1.plot(time, np.mean(vel_losses_vAE.numpy(), axis=0), "o", markersize=2)
-    ax1.set_title("Mean Velocity Prediction Error over Time Model Comparison")
-    ax1.set_xlabel("Time (ms)")
-    ax1.set_ylabel("Velocity Prediction Error")
-    ax1.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
-    fig1.savefig("overall_final_vels.png")
-    # fig1.show()
+    # lstm_hybrid_vels = np.genfromtxt('lstm_hybrid_vels.csv', delimiter=',')
+    # lstm_hybrid_rates = np.genfromtxt('lstm_hybrid_rates.csv', delimiter=',')
+    #
+    # vel_losses_vCH = np.genfromtxt('Combined-Hybrid_test_error_rates_load.csv', delimiter=',')
+    # rate_losses_vCH = np.genfromtxt('Combined-Hybrid_test_error_rates_load.csv', delimiter=',')
 
-    fig2, ax2 = plt.subplots()
-    ax2.plot(time, wb_vels, "o", markersize=2)
-    ax2.plot(time, lstm_hybrid_rates, "o", markersize=2)
-    ax2.plot(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
-    ax2.plot(time, np.mean(rate_losses_vCH.numpy(), axis=0), "o", markersize=2)
-    ax2.plot(time, np.mean(rate_losses_vMH.numpy(), axis=0), "o", markersize=2)
-    ax2.plot(time, np.mean(rate_losses_vAE.numpy(), axis=0), "o", markersize=2)
-    ax2.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
-    ax2.set_xlabel("Time (ms)")
-    ax2.set_ylabel("Body Rate Prediction Error")
-    ax2.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
-    fig2.savefig("overall_final_rates.png")
-    # fig2.show()
+    # vel_losses_vMH = np.genfromtxt('Motor-Hybrid_test_error_vels.csv')
+    # rate_losses_vMH = np.genfromtxt('Motor-Hybrid_test_error_rates.csv')
 
-    fig3, ax3 = plt.subplots()
-    ax3.semilogy(time, wb_vels, "o", markersize=2)
-    ax3.semilogy(time, lstm_hybrid_vels, "o", markersize=2)
-    ax3.semilogy(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
-    ax3.semilogy(time, np.mean(vel_losses_vCH.numpy(), axis=0), "o", markersize=2)
-    ax3.semilogy(time, np.mean(vel_losses_vMH.numpy(), axis=0), "o", markersize=2)
-    ax3.semilogy(time, np.mean(vel_losses_vAE.numpy(), axis=0), "o", markersize=2)
-    ax3.set_title("Mean Velocity Prediction Error over Time Model Comparison")
-    ax3.set_xlabel("Time (ms)")
-    ax3.set_ylabel("Velocity Prediction Error")
-    ax3.legend(
-        ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
-    fig3.savefig("overall_final_vels_log.png")
-    # fig1.show()
+    # vel_losses_vAE = np.genfromtxt('AccelError-Hybrid_test_error_vels_load.csv', delimiter=',')
+    # rate_losses_vAE = np.genfromtxt('AccelError-Hybrid_test_error_rates_load.csv', delimiter=',')
+    #
+    # wb_vels = np.genfromtxt('WB_test_error_vels.csv', delimiter=',')
+    # wb_rates = np.genfromtxt('WB_test_error_rates.csv', delimiter=',')
 
-    fig4, ax4 = plt.subplots()
-    ax4.semilogy(time, wb_vels, "o", markersize=2)
-    ax4.semilogy(time, lstm_hybrid_rates, "o", markersize=2)
-    ax4.semilogy(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
-    ax4.semilogy(time, np.mean(rate_losses_vCH.numpy(), axis=0), "o", markersize=2)
-    ax4.semilogy(time, np.mean(rate_losses_vMH.numpy(), axis=0), "o", markersize=2)
-    ax4.semilogy(time, np.mean(rate_losses_vAE.numpy(), axis=0), "o", markersize=2)
-    ax4.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
-    ax4.set_xlabel("Time (ms)")
-    ax4.set_ylabel("Body Rate Prediction Error")
-    ax4.legend(
-        ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
-    fig4.savefig("overall_final_rates_log.png")
+    # time = np.arange(0, 90*10, 10)
+    # fig1, ax1 = plt.subplots()
+    # ax1.plot(time, wb_vels, "o", markersize=2)
+    # ax1.plot(time, lstm_hybrid_vels, "o", markersize=2)
+    # ax1.plot(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    # ax1.plot(time, vel_losses_vCH, "o", markersize=2)
+    # ax1.plot(time, vel_losses_vMH, "o", markersize=2)
+    # ax1.plot(time, vel_losses_vAE, "o", markersize=2)
+    # ax1.set_title("Mean Velocity Prediction Error over Time Model Comparison")
+    # ax1.set_xlabel("Time (ms)")
+    # ax1.set_ylabel("Velocity Prediction Error")
+    # ax1.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    # fig1.savefig("overall_final_vels.png")
+    # # fig1.show()
+    #
+    # fig2, ax2 = plt.subplots()
+    # ax2.plot(time, wb_vels, "o", markersize=2)
+    # ax2.plot(time, lstm_hybrid_rates, "o", markersize=2)
+    # ax2.plot(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    # ax2.plot(time, rate_losses_vCH, "o", markersize=2)
+    # ax2.plot(time, rate_losses_vMH, "o", markersize=2)
+    # ax2.plot(time, rate_losses_vAE, "o", markersize=2)
+    # ax2.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
+    # ax2.set_xlabel("Time (ms)")
+    # ax2.set_ylabel("Body Rate Prediction Error")
+    # ax2.legend(["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN" ])
+    # fig2.savefig("overall_final_rates.png")
+    # # fig2.show()
+    #
+    # fig3, ax3 = plt.subplots()
+    # ax3.semilogy(time, wb_vels, "o", markersize=2)
+    # ax3.semilogy(time, lstm_hybrid_vels, "o", markersize=2)
+    # ax3.semilogy(time, np.mean(vel_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    # ax3.semilogy(time, vel_losses_vCH, "o", markersize=2)
+    # ax3.semilogy(time, vel_losses_vMH, "o", markersize=2)
+    # ax3.semilogy(time, vel_losses_vAE, "o", markersize=2)
+    # ax3.set_title("Mean Velocity Prediction Error over Time Model Comparison")
+    # ax3.set_xlabel("Time (ms)")
+    # ax3.set_ylabel("Velocity Prediction Error")
+    # ax3.legend(
+    #     ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
+    # fig3.savefig("overall_final_vels_log.png")
+    # # fig1.show()
+    #
+    # fig4, ax4 = plt.subplots()
+    # ax4.semilogy(time, wb_vels, "o", markersize=2)
+    # ax4.semilogy(time, lstm_hybrid_rates, "o", markersize=2)
+    # ax4.semilogy(time, np.mean(rate_losses_vE2E.numpy(), axis=0), "o", markersize=2)
+    # ax4.semilogy(time, rate_losses_vCH, "o", markersize=2)
+    # ax4.semilogy(time, rate_losses_vMH, "o", markersize=2)
+    # ax4.semilogy(time, rate_losses_vAE, "o", markersize=2)
+    # ax4.set_title("Mean Body Rate Prediction Error over Time Model Comparison")
+    # ax4.set_xlabel("Time (ms)")
+    # ax4.set_ylabel("Body Rate Prediction Error")
+    # ax4.legend(
+    #     ["WhiteBox", "LSTM Hybrid", "End2End-TCN", "Combined-Hybrid-TCN", "Motor-Hybrid-TCN", "AccelError-Hybrid-TCN"])
+    # fig4.savefig("overall_final_rates_log.png")
 
-    fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
-    bplot = ax5.boxplot(rate_losses_vMH.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
-    ax5.set_title("Motor-Hybrid-TCN Body Rate Prediction Range Over Time")
-    ax5.set_xlabel("Sample #")
-    ax5.set_ylabel("Body Rate Prediction Error")
-    ax5.set_ylim([0, 0.1])
-    for patch in bplot["boxes"]:
-        patch.set_facecolor("lightblue")
-
-    fig5.savefig("MH_rate_range.png")
-    fig5.show()
-
-    fig6, ax6 = plt.subplots(figsize=(24.0, 6.0))
-    bplot = ax6.boxplot(vel_losses_vMH.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
-    ax6.set_title("Motor-Hybrid-TCN Velocity Prediction Range Over Time")
-    ax6.set_xlabel("Sample #")
-    ax6.set_ylabel("Velocity Prediction Error")
-    ax6.set_ylim([0, 0.1])
-    for patch in bplot["boxes"]:
-        patch.set_facecolor("lightblue")
-
-    fig4.savefig("MH_vel_range.png")
-    fig4.show()
+    # fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
+    # bplot = ax5.boxplot(rate_losses_vMH, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    # ax5.set_title("Motor-Hybrid-TCN Body Rate Prediction Range Over Time")
+    # ax5.set_xlabel("Sample #")
+    # ax5.set_ylabel("Body Rate Prediction Error")
+    # # ax5.set_ylim([0, 0.1])
+    # for patch in bplot["boxes"]:
+    #     patch.set_facecolor("lightblue")
+    #
+    # fig5.savefig("MH_rate_range.png")
+    # fig5.show()
+    #
+    # fig6, ax6 = plt.subplots(figsize=(24.0, 6.0))
+    # bplot = ax6.boxplot(vel_losses_vMH, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)
+    # ax6.set_title("Motor-Hybrid-TCN Velocity Prediction Range Over Time")
+    # ax6.set_xlabel("Sample #")
+    # ax6.set_ylabel("Velocity Prediction Error")
+    # # ax6.set_ylim([0, 0.1])
+    # for patch in bplot["boxes"]:
+    #     patch.set_facecolor("lightblue")
+    #
+    # fig6.savefig("MH_vel_range.png")
+    # fig6.show()
 
     # fig5, ax5 = plt.subplots(figsize=(24.0, 6.0))
     # bplot = ax5.boxplot(rate_losses_v6.T, sym="", medianprops=dict(linewidth=3, color='red'), patch_artist=True)

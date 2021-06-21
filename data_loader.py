@@ -2,12 +2,12 @@ import scipy.io as sio
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from matplotlib import pyplot as plt
-NUM_TRAIN = 1388302-34709+2
-NUM_TEST = 34709
+NUM_TRAIN = 1388302-34709+2  # Precomputed number of training samples
+NUM_TEST = 34709             # Precomputed number of testing samples
 
 
 class WBDataLoader:
+    # Data loader for simple physics-based "white box" model
     def __init__(self, filepath):
         self.data = sio.loadmat(filepath)
         self.f_len = 0
@@ -18,6 +18,7 @@ class WBDataLoader:
         self.f_vel = np.zeros((3, 30000))
         self.f_rate = np.zeros((3, 30000))
 
+    # Loads full state telemetry a single flight from self.data as a series of numpy arrays
     def get_flight(self, i):
         flight = self.data["flights"][0, i]
         self.f_len = flight["len"][0, 0][0][0]          # Length of flight
@@ -32,6 +33,7 @@ class WBDataLoader:
 
 
 class TrainSet(Dataset):
+    # Generates input and label sequences from a quadrotor telemetry dataset for a machine learning training set.
     def __init__(self, filepath, input_size, output_size, full_set=False):
         if full_set:
             chan = 16
@@ -179,7 +181,6 @@ class TestSet(Dataset):
         std = np.std(self.inputs[:, :, -4:], axis=(0, 1))
         self.inputs[:, :, -4:] = (self.inputs[:, :, -4:] - mean) / std
         self.outputs[:, :, -4:] = (self.outputs[:, :, -4:] - mean) / std
-
 
     def __len__(self):
         return self.inputs.shape[0]

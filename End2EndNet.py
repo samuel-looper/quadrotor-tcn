@@ -370,18 +370,19 @@ if __name__ == "__main__":
     epochs = 50
     bs = 16
     P = 90
+    L = 64
 
     loss = torch.nn.L1Loss()  # Define L1 Loss
 
-    for L in [2, 4, 8, 16, 32, 64, 128, 256]:
-        tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
-        net = E2ESingleStepTCNv4(L, P).to(device)
-        train_len = int(len(tv_set) * 0.8)
-        val_len = len(tv_set) - train_len
-        train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
-        train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
-        val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
-        print("Data Loaded Successfully")
-
-        train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4_{}".format(L))
-
+    #tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
+    net = E2ESingleStepTCNv6(L, P).to(device)
+    torchsummary.summary(net,  (16, L+P))
+    # train_len = int(len(tv_set) * 0.8)
+    # val_len = len(tv_set) - train_len
+    # train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
+    # train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
+    # val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
+    # print("Data Loaded Successfully")
+    #
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4_{}".format(L))
+    #
