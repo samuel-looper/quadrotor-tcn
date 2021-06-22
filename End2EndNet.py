@@ -4,10 +4,14 @@ import torch.nn as nn
 import torchsummary
 from data_loader import TrainSet
 from torch.utils.data import DataLoader
-import math
+
+# End2End.py: Build and train End2EndNet for robotic system modeling
+# TCN implementation based on Sequence Modeling Benchmarks and Temporal Convolutional Networks (TCN) by  Shaojie Bai
+# Link: https://github.com/locuslab/TCN
 
 
 class Chomp1d(nn.Module):
+    # PyTorch module that truncates discrete convolution output for the purposes of causal convolutions
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
         self.chomp_size = chomp_size
@@ -16,231 +20,156 @@ class Chomp1d(nn.Module):
         return x[:, :, :-self.chomp_size].contiguous()
 
 
-class TConvLayer(nn.Module):
+class TConv(nn.Module):
+    # Module representing a single causal convolution (truncated 1D convolution)
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding):
-        super(TConvLayer, self).__init__()
+        super(TConv, self).__init__()
         self.conv1 = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.chomp1 = Chomp1d(padding)
         self.net = nn.Sequential(self.conv1, self.chomp1)
-        self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
         self.init_weights()
 
-    def init_weights(self):
+    def init_weights(self):  # Initializes weights to positive values
         self.conv1.weight.data.normal_(0, 0.01)
-        if self.downsample is not None:
-            self.downsample.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
-        out = self.net(x)
-        res = x if self.downsample is None else self.downsample(x)
-        return (out + res)
+        return self.net(x)
 
 
 class TConvBlock(nn.Module):
-    # Temporal Convolution block that accepts an input of Lxc_in with a dilation factor of d and performs
-    # causal convolution on the input with a kernel size of K to return an output size Lxc_out
+    # Module representing a temporal convolution block which consists of:
+    # - causal convolutions
+    # - sequence of conv layers with dilations that increase exponentially
 
-    # Note that the look-back length is not necessarily L but is actually the nearest value K*d^i < L for some int i
-    def __init__(self, L, c_in, c_out, K, d):
+    def __init__(self, c_in, c_out, k, dilations):
         super(TConvBlock, self).__init__()
+        self.dsample = nn.Conv1d(c_in, c_out, 1) if c_in != c_out else None  # Downsample layer for residual if required
+        self.lookback = 0
         layers = []
-        n = math.floor(math.log(L / K, d))
-        for i in range(n):
-            if i == 0:
-                layers += [TConvLayer(c_in, c_out, K, stride=1, dilation=d, padding=(K - 1) * d)]
+
+        # Adds sequence of causal convolutions to module based on input dilations
+        for i in range(len(dilations)):
+            d = dilations[i]
+            if i == 0:  # Downsample w.r.t channel size at the first convolution
+                layers += [TConv(c_in, c_out, k, stride=1, dilation=d, padding=(k - 1) * d)]
             else:
-                layers += [TConvLayer(c_out, c_out, K, stride=1, dilation=d, padding=(K - 1) * d)]
+                layers += [TConv(c_out, c_out, k, stride=1, dilation=d, padding=(k - 1) * d)]
+
+            self.lookback += (k - 1) * d    # Calculates total lookback window for layer
 
         self.network = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.network(x)
+        # Model forward pass including residual connection
+        out = self.network(x)
+        res = x if self.dsample is None else self.dsample(x)
+        return out + res
 
 
-class E2ESingleStepTCNv3(nn.Module):
-    def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCNv3, self).__init__()
-        L = lookback
-        P = forward_step
-        K = 8
-        d = 2
-        self.L = L
-        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
+class End2EndNet(nn.Module):
+    def __init__(self, past_state_length, future_state_length):
+        # Final End2EndNet design with fewer layers, fewer channels, no dropout,
+        # and control inputs at the front of the network
+
+        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
+        # Output: Time series of future truncated robot state (bs x 6 x F)
+
+        super(End2EndNet, self).__init__()
+        K = 5
+        dilations = [1, 2, 4, 8]
+        self.P = past_state_length
+        self.F = future_state_length
+
+        self.tconv1 = TConvBlock(16, 16, K, dilations)
         self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L+P, 16, 32, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(32)
-        self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(P + int(L/2), 32, 32, K, d)
-        self.bn3 = torch.nn.BatchNorm1d(32)
-        self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(P + int(L/2), 32, 64, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(64)
-        self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 64, 6, K, d)
-
-    def forward(self, input):
-        # Assume X: batch by length by channel size
-        # print(input.shape)
-        x = self.relu1(self.bn1(self.tconv1(input)))
-        x = self.relu2(self.bn2(self.tconv2(x)))
-        x = self.relu3(self.bn3(self.tconv3(x[:, :, int(self.L/2):])))
-        x = self.relu4(self.bn4(self.tconv4(x)))
-        x = self.tconv5(x[:, :, int(self.L/2):])
-        # print(x.shape)
-        return x
-
-
-class E2ESingleStepTCNv4(nn.Module):
-    def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCNv4, self).__init__()
-        L = lookback
-        P = forward_step
-        K = 8
-        d = 2
-        self.L = L
-        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
-        self.bn1 = torch.nn.BatchNorm1d(16)
-        self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
+        self.tconv2 = TConvBlock(16, 16, K, dilations)
         self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(P + int(L/2), 16, 32, K, d)
+        self.tconv3 = TConvBlock(16, 32, K, dilations)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
+        self.tconv4 = TConvBlock(32, 32, K, dilations)
         self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P, 32, 64, K, d)
+        self.tconv5 = TConvBlock(32, 64, K, dilations)
         self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P, 64, 64, K, d)
+        self.tconv6 = TConvBlock(64, 64, K, dilations)
         self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(P, 64, 128, K, d)
+        self.tconv7 = TConvBlock(64, 128, K, dilations)
         self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(P, 128, 6, K, d)
+        self.tconv8 = TConvBlock(128, 6, K, dilations)
 
     def forward(self, input):
-        # Assume X: batch by length by channel size
-        # print(input.shape)
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.L/2):])))
+        x3 = self.relu3(self.bn3(self.tconv3(x2[:, :, int(self.P/2):])))
         x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.L/2):])))
+        x5 = self.relu5(self.bn5(self.tconv5(x4[:, :, int(self.P/2):])))
         x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
         x7 = self.relu7(self.bn7(self.tconv7(x6)))
         x8 = self.tconv8(x7)
-        # print(x.shape)
+
         return x8
 
 
-class E2ESingleStepTCNv5(nn.Module):
-    def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCNv5, self).__init__()
-        L = lookback
-        P = forward_step
-        K = 8
-        d = 2
-        self.L = L
-        self.tconv1 = TConvBlock(L+P, 16, 16, K, d)
+class End2EndNet_Large(nn.Module):
+    def __init__(self, past_state_length, future_state_length):
+        super(End2EndNet_Large, self).__init__()
+        # Larger End2EndNet design with more layers, more channels, dropout,
+        # and control inputs at the front of the network
+
+        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
+        # Output: Time series of future truncated robot state (bs x 6 x F)
+
+        K = 5
+        dilations = [1, 2, 4, 8]
+        self.P = past_state_length
+        self.F = future_state_length
+
+        self.tconv1 = TConvBlock(16, 16, K, dilations)
         self.bn1 = torch.nn.BatchNorm1d(16)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn2 = torch.nn.BatchNorm1d(16)
-        self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
-        self.bn3 = torch.nn.BatchNorm1d(32)
-        self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(P + int(L/2), 32, 32, K, d)
-        self.bn4 = torch.nn.BatchNorm1d(32)
-        self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(P + int(L/2), 32, 64, K, d)
-        self.bn5 = torch.nn.BatchNorm1d(64)
-        self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P + int(L/2), 64, 64, K, d)
-        self.bn6 = torch.nn.BatchNorm1d(64)
-        self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(P, 64, 128, K, d)
-        self.bn7 = torch.nn.BatchNorm1d(128)
-        self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(P, 128, 128, K, d)
-        self.bn8 = torch.nn.BatchNorm1d(128)
-        self.relu8 = torch.nn.ReLU()
-        self.tconv9 = TConvBlock(P, 128, 256, K, d)
-        self.bn9 = torch.nn.BatchNorm1d(256)
-        self.relu9 = torch.nn.ReLU()
-        self.tconv10 = TConvBlock(P, 256, 6, K, d)
-
-    def forward(self, input):
-        # Assume X: batch by length by channel size
-        # print(input.shape)
-        x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = x3[:, :, int(self.L/2):] + self.relu4(self.bn4(self.tconv4(x3[:, :, int(self.L/2):])))
-        x5 = self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = self.relu7(self.bn7(self.tconv7(x6[:, :, int(self.L/2):])))
-        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
-        x9 = self.relu9(self.bn9(self.tconv9(x8)))
-        x10 = self.tconv10(x9)
-        # print(x.shape)
-        return x10
-
-
-class E2ESingleStepTCNv6(nn.Module):
-    def __init__(self, lookback, forward_step):
-        super(E2ESingleStepTCNv6, self).__init__()
-        L = lookback
-        P = forward_step
-        K = 8
-        d = 2
-        self.L = L
-        self.tconv1 = TConvBlock(L + P, 16, 16, K, d)
-        self.bn1 = torch.nn.BatchNorm1d(16)
-        self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(L + P, 16, 16, K, d)
+        self.tconv2 = TConvBlock(16, 16, K, dilations)
         self.bn2 = torch.nn.BatchNorm1d(16)
         self.relu2 = torch.nn.ReLU()
         self.dropout2 = torch.nn.Dropout(p=0.2)
-        self.tconv3 = TConvBlock(L + P, 16, 32, K, d)
+        self.tconv3 = TConvBlock(16, 32, K, dilations)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(L + P, 32, 32, K, d)
+        self.tconv4 = TConvBlock(32, 32, K, dilations)
         self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
         self.dropout4 = torch.nn.Dropout(p=0.2)
-        self.tconv5 = TConvBlock(L + P, 32, 64, K, d)
+        self.tconv5 = TConvBlock(32, 64, K, dilations)
         self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(P + int(L / 2), 64, 64, K, d)
+        self.tconv6 = TConvBlock(64, 64, K, dilations)
         self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
         self.dropout6 = torch.nn.Dropout(p=0.2)
-        self.tconv7 = TConvBlock(P + int(L / 2), 64, 128, K, d)
+        self.tconv7 = TConvBlock(64, 128, K, dilations)
         self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(P + int(L / 2), 128, 128, K, d)
+        self.tconv8 = TConvBlock(128, 128, K, dilations)
         self.bn8 = torch.nn.BatchNorm1d(128)
         self.relu8 = torch.nn.ReLU()
         self.dropout8 = torch.nn.Dropout(p=0.2)
-        self.tconv9 = TConvBlock(P, 128, 256, K, d)
+        self.tconv9 = TConvBlock(128, 256, K, dilations)
         self.bn9 = torch.nn.BatchNorm1d(256)
         self.relu9 = torch.nn.ReLU()
-        self.tconv10 = TConvBlock(P, 256, 256, K, d)
+        self.tconv10 = TConvBlock(256, 256, K, dilations)
         self.bn10 = torch.nn.BatchNorm1d(256)
         self.relu10 = torch.nn.ReLU()
-        self.tconv11 = TConvBlock(P, 256, 512, K, d)
+        self.tconv11 = TConvBlock(256, 512, K, dilations)
         self.bn11 = torch.nn.BatchNorm1d(512)
         self.relu11 = torch.nn.ReLU()
-        self.tconv12 = TConvBlock(P, 512, 6, K, d)
+        self.tconv12 = TConvBlock(512, 6, K, dilations)
 
     def forward(self, input):
-        # Assume X: batch by length by channel size
-        # print(input.shape)
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = self.dropout2(x1 + self.relu2(self.bn2(self.tconv2(x1))))
         x3 = self.relu3(self.bn3(self.tconv3(x2)))
@@ -253,11 +182,12 @@ class E2ESingleStepTCNv6(nn.Module):
         x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
         x11 = self.relu11(self.bn11(self.tconv11(x10)))
         x12 = self.tconv12(x11)
-        # print(x.shape)
+
         return x12
 
 
 class WeightedTemporalLoss(nn.Module):
+    # Custom loss function that applies mean square error, with a decaying weight term
     def __init__(self, weight=None, size_average=True):
         super(WeightedTemporalLoss, self).__init__()
 
@@ -269,7 +199,8 @@ class WeightedTemporalLoss(nn.Module):
 
 
 def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, name):
-    print(name)
+    # Performs training and validation for End2EndNet in PyTorch
+
     optimizer = torch.optim.Adam(list(net.parameters()), lr=lr, weight_decay=wd)  # Define Adam optimization algorithm
 
     train_loss = []
@@ -285,23 +216,24 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
         moving_av = 0
         i = 0
 
+        # Training
         for data in train_loader:
             input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
             label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
-            output = label[:, 6:12, :]
-            feedforward = torch.zeros(label.shape)
+            output = label[:, 6:12, :]                  # Define label as the future truncated state
+            feedforward = torch.zeros(label.shape)      # Add future control input to input state
             feedforward[:, 12:, :] = label[:, 12:, :]
             input = torch.cat((input, feedforward), 2)
             
-            optimizer.zero_grad()  # Reset gradients
-            pred = net(input)  # Forward Pass
-            minibatch_loss = loss(pred, output)  # Compute loss
+            optimizer.zero_grad()                       # Reset gradients
+            pred = net(input)                           # Forward Pass
+            minibatch_loss = loss(pred, output)         # Compute loss
             epoch_train_loss += minibatch_loss.item() / train_len
             moving_av += minibatch_loss.item()
 
-            minibatch_loss.backward()  # Backpropagation
-            optimizer.step()  # Optimization
+            minibatch_loss.backward()                   # Backpropagation
+            optimizer.step()                            # Optimization
             i += 1
             if i % 50 == 0:
                 print("Training {}% finished".format(round(100 * i* bs / train_len, 4)))
@@ -322,14 +254,14 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
                 input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
                 label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
-                output = label[:, 6:12, :]
-                feedforward = torch.zeros(label.shape)
+                output = label[:, 6:12, :]                  # Define label as the future truncated state
+                feedforward = torch.zeros(label.shape)      # Add future control input to input state
                 feedforward[:, 12:, :] = label[:, 12:, :]
                 input = torch.cat((input, feedforward), 2)
 
-                optimizer.zero_grad()  # Reset gradients
-                pred = net(input)  # Forward Pass
-                minibatch_loss = loss(pred, output)  # Compute loss
+                optimizer.zero_grad()                       # Reset gradients
+                pred = net(input)                           # Forward Pass
+                minibatch_loss = loss(pred, output)         # Compute loss
                 epoch_val_loss += minibatch_loss.item() / val_len
                 i += 1
                 if i % 100 == 0:
@@ -356,6 +288,7 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
     fig.savefig("{}.png".format(name))
     fig.show()
 
+
 if __name__ == "__main__":
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
@@ -369,20 +302,22 @@ if __name__ == "__main__":
     wd = 0.00005
     epochs = 50
     bs = 16
-    P = 90
-    L = 64
+    P = 64
+    F = 90
 
     loss = torch.nn.L1Loss()  # Define L1 Loss
 
-    #tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', L, P, full_set=True)
-    net = E2ESingleStepTCNv6(L, P).to(device)
-    torchsummary.summary(net,  (16, L+P))
-    # train_len = int(len(tv_set) * 0.8)
-    # val_len = len(tv_set) - train_len
-    # train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
-    # train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
-    # val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
-    # print("Data Loaded Successfully")
-    #
-    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "E2E_v4_{}".format(L))
-    #
+    # Define training/validation datasets and dataloaders
+    tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
+    train_len = int(len(tv_set) * 0.8)
+    val_len = len(tv_set) - train_len
+    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
+    print("Data Loaded Successfully")
+
+    # Run main training loop
+    net = End2EndNet(P, F).to(device)
+    torchsummary.summary(net,  (16, P+F))
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End")
+
