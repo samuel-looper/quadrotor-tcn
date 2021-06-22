@@ -8,7 +8,7 @@ and generate any published results.
 This includes the following files:
 - data_loader.py:	Generate custom PyTorch datasets for quadrotor multistep motion prediction
 - End2EndNet.py:	Build and train End2EndNet for robotic system modeling
-- TCNHybrid.py:		Build and train TCN hybrid models for quadrotor modeling
+- HybridTCN.py:		Build and train TCN hybrid models for quadrotor modeling
 - PhysicsModel.py:	Build and simulate physics-based quadrotor models
 - SystemID.py:		Perform system identification for physics-based quadrotor models
 - multi_step_eval.py:	Evaluate robotic system predictive models over multiple steps

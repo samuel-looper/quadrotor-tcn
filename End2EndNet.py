@@ -290,14 +290,6 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
 
 
 if __name__ == "__main__":
-    if torch.cuda.is_available():
-        device = torch.device("cuda:0")
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
-        print("GPU")
-    else:
-        device = torch.device("cpu")
-        print("CPU")
-
     lr = 0.0001
     wd = 0.00005
     epochs = 50
@@ -311,10 +303,18 @@ if __name__ == "__main__":
     tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
-    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator(device))
+    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len])
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
+        print("GPU")
+    else:
+        device = torch.device("cpu")
+        print("CPU")
 
     # Run main training loop
     net = End2EndNet(P, F).to(device)
