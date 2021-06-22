@@ -278,14 +278,6 @@ def train_hybrid(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd
 
 
 if __name__ == "__main__":
-    if torch.cuda.is_available():
-        device = torch.device("cuda:0")
-        torch.set_default_tensor_type("torch.cuda.FloatTensor")
-        print("GPU")
-    else:
-        device = torch.device("cpu")
-        print("CPU")
-
     # Simulation Model Parameters
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
@@ -312,6 +304,14 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
     print("Data Loaded Successfully")
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
+        print("GPU")
+    else:
+        device = torch.device("cpu")
+        print("CPU")
 
     # Main Training Loop
     model = HybridTCN(l, m, d, kt, kr, ixx, iyy, izz, past_window, device, motor=True, accel_error=False)
