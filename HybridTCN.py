@@ -77,7 +77,7 @@ class HybridTCNComponent_small(nn.Module):
         self.bn4 = torch.nn.BatchNorm1d(16)
         self.relu4 = torch.nn.ReLU()
         self.fc1 = torch.nn.Linear((self.t + 1) * 16, 64)
-        self.relu6 = torch.nn.ReLU()
+        self.relu5 = torch.nn.ReLU()
         self.fc2 = torch.nn.Linear(64, state_size)
 
     def forward(self, input):
@@ -85,9 +85,8 @@ class HybridTCNComponent_small(nn.Module):
         x = self.relu2(self.bn2(self.tconv2(x)))
         x = self.relu3(self.bn3(self.tconv3(x)))
         x = self.relu4(self.bn4(self.tconv4(x[:, :, (self.P - self.t):])))
-        x = self.relu5(self.bn5(self.tconv5(x)))
         x = torch.flatten(x, 1, 2)
-        x = self.relu6(self.fc1(x))
+        x = self.relu5(self.fc1(x))
         x = self.fc2(x)
         return x
 
