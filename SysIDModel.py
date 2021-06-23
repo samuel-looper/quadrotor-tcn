@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchdiffeq import odeint
-from data_loader import SinglePredDatasetTrain
+from data_loader import TrainSet
 from torch.utils.data import DataLoader
 import gc
 PATH = './sys_id.pth'
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     epochs = 10
     pred_steps = 1
 
-    tv_set = SinglePredDatasetTrain('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
+    tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_state=True)
     train_len = int(len(tv_set) * 0.8)
     val_len = len(tv_set) - train_len
     train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len], torch.Generator())

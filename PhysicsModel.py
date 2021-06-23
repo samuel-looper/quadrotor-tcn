@@ -1,11 +1,13 @@
 import numpy as np
 from scipy import integrate
 
+# PhysicsModel.py:	Build and simulate physics-based quadrotor models
 
-# White Box Quadrotor Model
-class WhiteBoxModel:
+
+class PhysicsModel:
+    # Physics-based Quadrotor Model
     def __init__(self, l, d, m, kt, kr, ixx, iyy, izz, init_state=np.zeros((12, 1))):
-        # Initialize variables to store state of white box model
+        # Initialize variables to store quadrotor
         self.ang = init_state[0:3]              # Angular position (XYZ Euler Angle)
         self.pos = init_state[3:6]              # Linear Position
         self.rate = init_state[6:9]             # Body-frame rates (Euler Angle Angular Velocity)
@@ -77,7 +79,7 @@ class WhiteBoxModel:
         init_state = np.concatenate([self.ang, self.pos, self.rate, self.vel])  # Set initial state for integration
         self.ode.set_initial_value(init_state, 0)                               # Initialize ODE
         updated_state = self.ode.integrate(self.ode.t + dt)                     # Integrate from t to t+dt
-        # self.ang = self.wrap_angle(updated_state[0:3])                          # Wrap angles
+        self.ang = self.wrap_angle(updated_state[0:3])                          # Wrap angles
         self.ang = updated_state[0:3]
         self.pos = updated_state[3:6]                                          # Update state
         self.rate = updated_state[6:9]
