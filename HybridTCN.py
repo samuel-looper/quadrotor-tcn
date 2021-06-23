@@ -73,15 +73,12 @@ class HybridTCNComponent_small(nn.Module):
         self.tconv3 = TConvBlock(32, 32, K, dilations)
         self.bn3 = torch.nn.BatchNorm1d(32)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(32, 32, K, dilations)
-        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.tconv4 = TConvBlock(32, 16, K, dilations)
+        self.bn4 = torch.nn.BatchNorm1d(16)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(32, 16, K-2, dilations)
-        self.bn5 = torch.nn.BatchNorm1d(16)
-        self.relu5 = torch.nn.ReLU()
-        self.fc1 = torch.nn.Linear((self.t + 1) * 16, 128)
+        self.fc1 = torch.nn.Linear((self.t + 1) * 16, 64)
         self.relu6 = torch.nn.ReLU()
-        self.fc2 = torch.nn.Linear(128, state_size)
+        self.fc2 = torch.nn.Linear(64, state_size)
 
     def forward(self, input):
         x = self.relu1(self.bn1(self.tconv1(input)))
@@ -115,8 +112,8 @@ class HybridTCN(nn.Module):
             self.motor_net = HybridTCNComponent_small(past_state_length, 4).to(device)
             self.accel_net = HybridTCNComponent_small(past_state_length, 6).to(device)
         else:
-            self.motor_net = HybridTCNComponent(past_state_length, 4).to(device) if motor else None
-            self.accel_net = HybridTCNComponent(past_state_length, 6).to(device) if accel_error else None
+            self.motor_net = HybridTCNComponent_small(past_state_length, 4).to(device) if motor else None
+            self.accel_net = HybridTCNComponent_small(past_state_length, 6).to(device) if accel_error else None
         self.torque_mat = torch.tensor([[1, 1, 1, 1],
                           [0.707 * self.l, -0.707 * self.l, -0.707 * self.l, 0.707 * self.l],
                           [-0.707 * self.l, -0.707 * self.l, 0.707 * self.l, 0.707 * self.l],
