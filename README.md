@@ -11,7 +11,7 @@ This includes the following files:
 - HybridTCN.py:		Build and train TCN hybrid models for quadrotor modeling
 - PhysicsModel.py:	Build and simulate physics-based quadrotor models
 - SystemID.py:		Perform system identification for physics-based quadrotor models
-- multi_step_eval.py:	Evaluate robotic system predictive models over multiple steps
-- single_step_eval.py:	Evaluate robotic system predictive models over single steps
+- neuralnet_eval.py:	Evaluate neural network robotic system predictive models over multiple steps
+- physicsmodel_eval.py:	Evaluate physics-based robotic system predictive models over multiple steps
 - prediction_sim.py:	Simulate robotic system motion and predictive models over trajectory samples 
 - dataset_stats.py:	Calculate dataset statistics
