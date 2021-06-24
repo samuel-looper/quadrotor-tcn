@@ -1,8 +1,10 @@
-from WhiteBoxModel import WhiteBoxModel
+from PhysicsModel import PhysicsModel
 from data_loader import TestSet
 import numpy as np
 from torch.utils.data import DataLoader
-import torch
+
+# physicsmodel_eval.py:	Evaluate physics-based robotic system predictive models over multiple steps
+
 
 def mse_loss(x1, x2):
     # Returns the mean square error loss for two nx1 vectors
@@ -12,7 +14,7 @@ def mse_loss(x1, x2):
 
 
 if __name__ == "__main__":
-    # Initialize Variables
+    # Simulation Model Parameters
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
     m = 1  # mass (kg)
@@ -21,35 +23,36 @@ if __name__ == "__main__":
     ixx = 0.002  # moment of inertia about X-axis
     iyy = 0.002  # moment of inertia about Y-axis
     izz = 0.001  # moment of inertia about Z-axis
-    lookback = 1
-    pred_steps = 90
 
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
+    # Define training/validation datasets and dataloaders
+    P = 1
+    F = 90
+    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
     i = 0
-    vel_losses = np.zeros((len(test_set), pred_steps))
-    rate_losses = np.zeros((len(test_set), pred_steps))
+    vel_losses = np.zeros((len(test_set), F))
+    rate_losses = np.zeros((len(test_set), F))
 
-    # Data initialization
     for data in test_loader:
-        input = data["input"][:, 0, :].numpy().T
-        # continue here
+        input = data["input"][:, 0, :].numpy().T    # Load previous state for prediction
+        model = PhysicsModel(l, d, m, kt, kr, ixx, iyy, izz, init_state=input[:12, :])  # Initialize physics-based model
 
-        model = WhiteBoxModel(l, d, m, kt, kr, ixx, iyy, izz, init_state=input[:12, :])
+        for j in range(F):
+            label = data["label"][:, j, :].numpy().T    # Load label
 
-        for j in range(pred_steps):
-            label = data["label"][:, j, :].numpy().T
+            # Forward simulation
             model.update_thrust(label[12:, :])
             model.update_torques()
             model.update(0.01)
+
+            # Calculate losses
             vel_loss = mse_loss(model.vel, label[9:12, :])
             rate_loss = mse_loss(model.rate, label[6:9, :])
             vel_losses[i][j] = vel_loss
             rate_losses[i][j] = rate_loss
 
         i += 1
-
         if i % 100 == 0:
             print("Iteration: {}".format(i))
 

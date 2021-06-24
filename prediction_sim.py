@@ -2,12 +2,16 @@ from data_loader import TestSet
 import numpy as np
 from torch.utils.data import DataLoader
 import torch
-from End2EndNet import E2ESingleStepTCNv4
+from End2EndNet import End2EndNet
 from scipy import integrate
 from matplotlib import pyplot as plt
 
+# prediction_sim.py: Simulate robotic system motion and predictive models over trajectory samples
+
 
 def plot_flights(pred, label, image_count):
+    # Generate plots of the true and predicted flight paths
+
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     ax.plot3D(pred[:, 3], pred[:, 4], pred[:, 5], 'blue', linewidth=1)
@@ -15,45 +19,22 @@ def plot_flights(pred, label, image_count):
     ax.legend(["Predicted Flight Path", "Actual Flight Path"])
     ax.set_title('Flight Path')
 
-    xlower = np.amin(label[:, 3]) - np.abs(np.amin(label[:, 3])) * 0.1
-    xupper = np.amax(label[:, 3]) + np.abs(np.amax(label[:, 3])) * 0.1
-    ylower = np.amin(label[:, 4]) - np.abs(np.amin(label[:, 4])) * 0.1
-    yupper = np.amax(label[:, 4]) + np.abs(np.amax(label[:, 4])) * 0.1
-    zlower = np.amin(label[:, 5]) - np.abs(np.amin(label[:, 5])) * 0.1
-    zupper = np.amax(label[:, 5]) + np.abs(np.amax(label[:, 5])) * 0.1
-
-    xrange = xupper-xlower
-    yrange = yupper-ylower
-    zrange = zupper-zlower
-    maxrange = max(xrange, yrange, zrange)
-
-    xlower -= (maxrange-xrange)/2
-    xupper += (maxrange - xrange) / 2
-    ylower -= (maxrange - yrange) / 2
-    yupper += (maxrange - yrange) / 2
-    zlower -= (maxrange - zrange) / 2
-    zupper += (maxrange - zrange) / 2
-
-
-
-    ax.set_xlim3d(xlower, xupper)
-    ax.set_ylim3d(ylower, yupper)
-    ax.set_zlim3d(zlower, zupper)
     ax.set_xlabel('X-position (m)')
     ax.set_ylabel('Y-position (m)')
     ax.set_zlabel('Z-position (m)')
     plt.show()
     fig.savefig('neural_net_sim{}.png'.format(image_count))
 
-class BlackBoxModel:
-    def __init__(self, vels, init_state=np.zeros((6, 1))):
-        # Initialize variables to store state of white box model
-        self.ang = init_state[0:3]              # Angular position (XYZ Euler Angle)
-        self.pos = init_state[3:6]              # Linear Position
 
+class NeuralNetModel:
+    # Quadrotor motion prediction model with Neural Net for quadrotor state prediction
+    def __init__(self, vels, init_state=np.zeros((6, 1))):
+        # Initialize variables to store quadrotor motion state
+        self.ang = init_state[0:3]  # Angular position (XYZ Euler Angle)
+        self.pos = init_state[3:6]  # Linear Position
 
         self.step = 0
-        self.vels = vels
+        self.vels = vels            # Neural network outputs full velocity and body rate tensor
 
         # Initialize integration method for discrete time dynamics
         self.ode = integrate.ode(self.state_dot).set_integrator('vode', nsteps=500, method='bdf')
@@ -85,37 +66,49 @@ class BlackBoxModel:
 
 
 if __name__ == "__main__":
-
+    # Define training/validation datasets and dataloaders
     lookback = 64
     pred_steps = 90
-
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_set=True)
+    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', lookback, pred_steps, full_state=True)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
-    vel_model = E2ESingleStepTCNv4(lookback, pred_steps)
-    vel_model.load_state_dict(torch.load('./E2E_v4.pth', map_location=torch.device("cpu")))
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
+        print("GPU")
+    else:
+        device = torch.device("cpu")
+        print("CPU")
+
+    # Load neural network model
+    vel_model = End2EndNet(lookback, pred_steps)
+    vel_model.load_state_dict(torch.load('./End2EndNet.pth', map_location=device))
     vel_model.train(False)
     vel_model.eval()
+
     outliers = 0
     count = 0
     image_count = 0
     outlier_range = np.zeros((16, 1))
     inlier_range = np.zeros((16))
 
+    # Evaluate for entire test set
     with torch.no_grad():
         for data in test_loader:
-            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2)  # Load Input data
-            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2)  # Load labels
+            raw_input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)    # Load Input data
+            label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)        # Load labels
 
-            feedforward = torch.zeros(label.shape)
+            feedforward = torch.zeros(label.shape)          # Future control inputs
             feedforward[:, 12:, :] = label[:, 12:, :]
-            input = torch.cat((raw_input, feedforward), 2)
+            input = torch.cat((raw_input, feedforward), 2)  # Full model input
 
-            pred_vels = vel_model(input)
+            pred_vels = vel_model(input)                    # Neural network truncated state prediction
             init_vel = torch.zeros((1, 6, 1))
             init_vel[:, :, 0] = raw_input[:, 6:12, -1]
             vels = torch.cat((init_vel, pred_vels), 2)
-            black_box_model = BlackBoxModel(vels[0, :, :].numpy(), raw_input[0, :6, -1].numpy())
+
+            # Forward integration of predicted velocities
+            black_box_model = NeuralNetModel(vels[0, :, :].numpy(), raw_input[0, :6, -1].numpy())
             state_rec = np.zeros((pred_steps+1, 12))
             state_rec[:, 6:] = black_box_model.vels.T
 
@@ -127,23 +120,24 @@ if __name__ == "__main__":
             state_rec[pred_steps, 0:3] = black_box_model.ang
             state_rec[pred_steps, 3:6] = black_box_model.pos
 
+            # Calculate errors
             state_label = label[0, :12, :].numpy().T
             state_error = (state_rec[:pred_steps, :] - state_label) ** 2
             full_sequence = np.concatenate((raw_input.numpy(), label.numpy()), axis=2)
+
+            # Calculate quadrotor state range for all samples
             inlier_range += full_sequence[0, :, :].ptp(axis=1)/len(test_set)
-            count+=1
-            if count % 10 == 0:
-                print(count)
+
+            # Calculate quadrotor state range for high error samples
             if state_error.sum() > 50:
                 ranges = np.expand_dims(full_sequence[0, :, :].ptp(axis=1), axis=1)
                 outlier_range = np.concatenate((outlier_range, ranges), axis=1)
 
-
+            # Calculate quadrotor state range for low error samples
             if state_error.sum() < 1:
-                print("inliner")
                 image_count += 1
                 plot_flights(state_rec[:pred_steps, :], state_label, image_count)
 
-
-    np.savetxt("outlier ranges.csv", outlier_range)
-    print(inlier_range)
+            count += 1
+            if count % 10 == 0:
+                print(count)

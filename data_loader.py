@@ -115,8 +115,8 @@ class TrainSet(Dataset):
 
 class TestSet(Dataset):
     # Generates input and label sequences from a quadrotor telemetry dataset for a sequence modeling test set.
-    def __init__(self, filepath, input_size, output_size, full_set=False):
-        if full_set:
+    def __init__(self, filepath, input_size, output_size, full_state=False):
+        if full_state:
             chan = 16   # Full state: Includes position, orientation, velocity, body rates and control input
         else:
             chan = 10   # Truncated state: Includes velocity, body rates and control input
@@ -137,7 +137,7 @@ class TestSet(Dataset):
                 # Generate fixed length input and output samples from a continuous flight
                 if input_size > output_size:   # Sampling interval based on max(input_size, output_size)
                     length = np.floor(f_vel.shape[0] / input_size).astype(int) * input_size
-                    if full_set:
+                    if full_state:
                         state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :],
                                            f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
                     else:
@@ -152,7 +152,7 @@ class TestSet(Dataset):
                     ind += interval - 1
                 else:
                     length = np.floor(f_vel.shape[0] / output_size).astype(int) * output_size
-                    if full_set:
+                    if full_state:
                         state = np.hstack((f_ang[1:length + 1, :], f_pos[1:length + 1, :], f_rate[1:length + 1, :],
                                            f_vel[:length, :], f_motor_cmd[1:length + 1, :]))
                     else:
