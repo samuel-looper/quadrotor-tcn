@@ -208,7 +208,7 @@ class End2EndNet_6(nn.Module):
         x3 = x2 + self.relu3(self.bn3(self.tconv3(x2)))
         x4 = self.relu4(self.bn4(self.tconv4(x3)))
         x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.tconv7(x5)
+        x6 = self.tconv6(x5)
         out = x6[:, :, self.P:]
 
         return out
