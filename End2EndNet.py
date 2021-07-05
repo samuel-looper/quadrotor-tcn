@@ -426,7 +426,7 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
             input = torch.transpose(data["input"].type(torch.FloatTensor), 1, 2).to(device)  # Load Input data
             label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
-            output = label[:, 6:12, :].to(device)          # Define label as the future truncated state
+            output = label[:, 6:12, :]         # Define label as the future truncated state
             feedforward = torch.zeros(label.shape).to(device)      # Add future control input to input state
             feedforward[:, 12:, :] = label[:, 12:, :]
             input = torch.cat((input, feedforward), 2)
@@ -460,7 +460,7 @@ def train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd,
                 label = torch.transpose(data["label"].type(torch.FloatTensor), 1, 2).to(device)  # Load labels
 
                 output = label[:, 6:12, :]                  # Define label as the future truncated state
-                feedforward = torch.zeros(label.shape)      # Add future control input to input state
+                feedforward = torch.zeros(label.shape).to(device)      # Add future control input to input state
                 feedforward[:, 12:, :] = label[:, 12:, :]
                 input = torch.cat((input, feedforward), 2)
 
