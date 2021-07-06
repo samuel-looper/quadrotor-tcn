@@ -2,19 +2,22 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import End2EndNet
+from End2EndNet import End2EndNet_3, End2EndNet_4, End2EndNet_5, End2EndNet_6, End2EndNet_8, End2EndNet_10, \
+    End2EndNet_12
 from HybridTCN import HybridTCN
 from torchdiffeq import odeint
-from data_loader import TestSet
+from data_loader import TestSet, TrainSet
 from time import perf_counter as count
+import os
 
 # neuralnet_eval.py: Evaluate robotic system predictive models over multiple steps
 
 
-def recurrent_test(test_loader, loss, model, rate_losses, vel_losses, name, device):
+def recurrent_test(test_loader, loss, model, pred_steps, name, device):
     # Evaluates recurrent prediction models on robotic system motion test set
     i = 0
-    pred_steps = rate_losses.shape[1]
+    vel_losses = torch.zeros((n, pred_steps))
+    rate_losses = torch.zeros((n, pred_steps))
 
     with torch.no_grad():
         for data in test_loader:
@@ -54,11 +57,12 @@ def recurrent_test(test_loader, loss, model, rate_losses, vel_losses, name, devi
         np.savetxt("{}_test_results_vels.csv".format(name), vel_losses.cpu().numpy())
 
 
-def conv_test(test_loader, loss, model, rate_losses, vel_losses, name, device):
+def conv_test(test_loader, loss, model, pred_steps, name, device):
     # Evaluates convolutional (i.e. one-shot) prediction models on robotic system motion test set
     i = 0
     time = []
-    pred_steps = rate_losses.shape[1]
+    vel_losses = torch.zeros((n, pred_steps))
+    rate_losses = torch.zeros((n, pred_steps))
 
     with torch.no_grad():
         for data in test_loader:
@@ -94,6 +98,8 @@ def conv_test(test_loader, loss, model, rate_losses, vel_losses, name, device):
 
 
 if __name__ == "__main__":
+    in_dir = "C:\\Users\\Samuel Looper\\Desktop\\research\\quadrotor-tcn\\output_data\\new_evals\\network_depth"
+
     # Simulation Model Parameters
     l = 0.211  # length (m)
     d = 1.7e-5  # blade parameter
@@ -105,18 +111,22 @@ if __name__ == "__main__":
     izz = 0.001  # moment of inertia about Z-axis
 
     # Hyperparameters
-    lr = 0.0001
-    wd = 0.00005
-    epochs = 50
     bs = 1
-    P = 64
+    P = 1
     F = 90
     loss = nn.L1Loss()
 
     # Define training/validation datasets and dataloaders
-    test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
-    n = int(len(test_set) / bs)
+    # test_set = TestSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
+    # test_loader = torch.utils.data.DataLoader(test_set, batch_size=bs, shuffle=True, num_workers=0)
+    torch.manual_seed(0)
+    tv_set = TrainSet('data/AscTec_Pelican_Flight_Dataset.mat', P, F, full_state=True)
+    train_len = int(len(tv_set) * 0.8)
+    val_len = len(tv_set) - train_len
+    train_set, val_set = torch.utils.data.random_split(tv_set, [train_len, val_len])
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=bs, shuffle=True, num_workers=0)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=bs, shuffle=True, num_workers=0)
+    n = int(len(val_set) / bs)
     print("Testing Length: {}".format(n))
 
     if torch.cuda.is_available():
@@ -128,23 +138,65 @@ if __name__ == "__main__":
         print("CPU")
 
     # Main Evaluation Loop
-    name = "End2End"
-    model = End2EndNet(P, F)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
+    name = "End2End_3layer"
+    model = End2EndNet_3(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
-    vel_losses_E2E = torch.zeros((n, F))
-    rate_losses_E2E = torch.zeros((n, F))
-    conv_test(test_loader, loss, model, rate_losses_E2E, vel_losses_E2E, name, device)
+    conv_test(val_loader, loss, model, F, name, device)
 
-    name = "MotorHybrid"
-    model = HybridTCN(l, m, d, kt, kr, ixx, iyy, izz, P, device, motor=True, accel_error=False)
-    model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
+    name = "End2End_4layer"
+    model = End2EndNet_4(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
-    vel_losses_MH = torch.zeros((n, F))
-    rate_losses_MH = torch.zeros((n, F))
-    recurrent_test(test_loader, loss, model, rate_losses_MH, vel_losses_MH, name, device)
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_5layer"
+    model = End2EndNet_5(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_6layer"
+    model = End2EndNet_6(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_8layer"
+    model = End2EndNet_8(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_10layer"
+    model = End2EndNet_10(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_12layer"
+    model = End2EndNet_12(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+
+
+    # name = "MotorHybrid"
+    # model = HybridTCN(l, m, d, kt, kr, ixx, iyy, izz, P, device, motor=True, accel_error=False)
+    # model.load_state_dict(torch.load('./{}.pth'.format(name), map_location=device))
+    # model.train(False)
+    # model.eval()
+    # vel_losses_MH = torch.zeros((n, F))
+    # rate_losses_MH = torch.zeros((n, F))
+    # recurrent_test(test_loader, loss, model, rate_losses_MH, vel_losses_MH, name, device)
 
 
 
