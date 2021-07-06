@@ -163,7 +163,7 @@ class End2EndNet_4_large(nn.Module):
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x2 = self.relu2(self.bn2(self.tconv2(x1)))
         x3 = self.relu3(self.bn3(self.tconv3(x2)))
         x4 = self.tconv4(x3)
         out = x4[:, :, self.P:]
@@ -511,14 +511,14 @@ class End2EndNet_12_large(nn.Module):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
         x3 = self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x4 = self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = self.relu6(self.bn6(self.tconv6(x5)))
         x7 = self.relu7(self.bn7(self.tconv7(x6)))
         x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
         x9 = self.relu9(self.bn9(self.tconv9(x8)))
-        x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
-        x11 = self.relu11(self.bn11(self.tconv11(x10)))
+        x10 = self.relu10(self.bn10(self.tconv10(x9)))
+        x11 = x10 + self.relu11(self.bn11(self.tconv11(x10)))
         x12 = self.tconv12(x11)
         out = x12[:, :, self.P:]
 
@@ -658,37 +658,37 @@ if __name__ == "__main__":
     # Run main training loop
     net = End2EndNet_4_small(P, F).to(device)
     torchsummary.summary(net,  (16, P+F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
 
     net = End2EndNet_4_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_med")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_med")
 
     net = End2EndNet_4_large(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_large")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_large")
 
     net = End2EndNet_8_small(P, F).to(device)
     torchsummary.summary(net,  (16, P+F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_small")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_small")
 
     net = End2EndNet_8_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_med")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_med")
 
     net = End2EndNet_8_large(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_large")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_large")
 
     net = End2EndNet_12_small(P, F).to(device)
     torchsummary.summary(net,  (16, P+F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
 
     net = End2EndNet_12_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_med")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_med")
 
     net = End2EndNet_12_large(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_large")
+    # train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_large")
 
