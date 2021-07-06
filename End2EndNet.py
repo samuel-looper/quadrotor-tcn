@@ -66,7 +66,7 @@ class TConvBlock(nn.Module):
         return out + res
 
 
-class End2EndNet_3(nn.Module):
+class End2EndNet_4_small(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -74,38 +74,7 @@ class End2EndNet_3(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_3, self).__init__()
-        K = 5
-        dilations = [1, 2, 4, 8]
-        self.P = past_state_length
-        self.F = future_state_length
-
-        self.tconv1 = TConvBlock(16, 32, K, dilations)
-        self.bn1 = torch.nn.BatchNorm1d(32)
-        self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(32, 32, K, dilations)
-        self.bn2 = torch.nn.BatchNorm1d(32)
-        self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(32, 6, K, dilations)
-
-    def forward(self, input):
-        x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = self.tconv3(x2)
-        out = x3[:, :, self.P:]
-
-        return out
-
-
-class End2EndNet_4(nn.Module):
-    def __init__(self, past_state_length, future_state_length):
-        # Final End2EndNet design with fewer layers, fewer channels, no dropout,
-        # and control inputs at the front of the network
-
-        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
-        # Output: Time series of future truncated robot state (bs x 6 x F)
-
-        super(End2EndNet_4, self).__init__()
+        super(End2EndNet_4_small, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
@@ -132,7 +101,7 @@ class End2EndNet_4(nn.Module):
         return out
 
 
-class End2EndNet_5(nn.Module):
+class End2EndNet_4_med(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -140,7 +109,7 @@ class End2EndNet_5(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_5, self).__init__()
+        super(End2EndNet_4_med, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
@@ -152,26 +121,22 @@ class End2EndNet_5(nn.Module):
         self.tconv2 = TConvBlock(32, 32, K, dilations)
         self.bn2 = torch.nn.BatchNorm1d(32)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(32, 32, K, dilations)
-        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.tconv3 = TConvBlock(32, 64, K, dilations)
+        self.bn3 = torch.nn.BatchNorm1d(64)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(32, 32, K, dilations)
-        self.bn4 = torch.nn.BatchNorm1d(32)
-        self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(32, 6, K, dilations)
+        self.tconv4 = TConvBlock(64, 6, K, dilations)
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
         x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
         x3 = self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = self.tconv5(x4)
-        out = x5[:, :, self.P:]
+        x4 = self.tconv4(x3)
+        out = x4[:, :, self.P:]
 
         return out
 
 
-class End2EndNet_6(nn.Module):
+class End2EndNet_4_large(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -179,42 +144,34 @@ class End2EndNet_6(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_6, self).__init__()
+        super(End2EndNet_4_large, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
         self.F = future_state_length
 
-        self.tconv1 = TConvBlock(16, 16, K, dilations)
-        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.tconv1 = TConvBlock(16, 32, K, dilations)
+        self.bn1 = torch.nn.BatchNorm1d(32)
         self.relu1 = torch.nn.ReLU()
-        self.tconv2 = TConvBlock(16, 32, K, dilations)
-        self.bn2 = torch.nn.BatchNorm1d(32)
+        self.tconv2 = TConvBlock(32, 64, K, dilations)
+        self.bn2 = torch.nn.BatchNorm1d(64)
         self.relu2 = torch.nn.ReLU()
-        self.tconv3 = TConvBlock(32, 32, K, dilations)
-        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.tconv3 = TConvBlock(64, 128, K, dilations)
+        self.bn3 = torch.nn.BatchNorm1d(128)
         self.relu3 = torch.nn.ReLU()
-        self.tconv4 = TConvBlock(32, 32, K, dilations)
-        self.bn4 = torch.nn.BatchNorm1d(32)
-        self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(32, 32, K, dilations)
-        self.bn5 = torch.nn.BatchNorm1d(32)
-        self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(32, 6, K, dilations)
+        self.tconv4 = TConvBlock(128, 6, K, dilations)
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = x2 + self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.tconv6(x5)
-        out = x6[:, :, self.P:]
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = self.tconv4(x3)
+        out = x4[:, :, self.P:]
 
         return out
 
 
-class End2EndNet_8(nn.Module):
+class End2EndNet_8_small(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -222,7 +179,7 @@ class End2EndNet_8(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_8, self).__init__()
+        super(End2EndNet_8_small, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
@@ -265,7 +222,7 @@ class End2EndNet_8(nn.Module):
         return out
 
 
-class End2EndNet_10(nn.Module):
+class End2EndNet_8_med(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -273,7 +230,7 @@ class End2EndNet_10(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_10, self).__init__()
+        super(End2EndNet_8_med, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
@@ -291,22 +248,16 @@ class End2EndNet_10(nn.Module):
         self.tconv4 = TConvBlock(32, 32, K, dilations)
         self.bn4 = torch.nn.BatchNorm1d(32)
         self.relu4 = torch.nn.ReLU()
-        self.tconv5 = TConvBlock(32, 32, K, dilations)
-        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.tconv5 = TConvBlock(32, 64, K, dilations)
+        self.bn5 = torch.nn.BatchNorm1d(64)
         self.relu5 = torch.nn.ReLU()
-        self.tconv6 = TConvBlock(32, 32, K, dilations)
-        self.bn6 = torch.nn.BatchNorm1d(32)
+        self.tconv6 = TConvBlock(64, 64, K, dilations)
+        self.bn6 = torch.nn.BatchNorm1d(64)
         self.relu6 = torch.nn.ReLU()
-        self.tconv7 = TConvBlock(32, 32, K, dilations)
-        self.bn7 = torch.nn.BatchNorm1d(32)
+        self.tconv7 = TConvBlock(64, 128, K, dilations)
+        self.bn7 = torch.nn.BatchNorm1d(128)
         self.relu7 = torch.nn.ReLU()
-        self.tconv8 = TConvBlock(32, 32, K, dilations)
-        self.bn8 = torch.nn.BatchNorm1d(32)
-        self.relu8 = torch.nn.ReLU()
-        self.tconv9 = TConvBlock(32, 32, K, dilations)
-        self.bn9 = torch.nn.BatchNorm1d(32)
-        self.relu9 = torch.nn.ReLU()
-        self.tconv10 = TConvBlock(32, 6, K, dilations)
+        self.tconv8 = TConvBlock(128, 6, K, dilations)
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
@@ -316,15 +267,13 @@ class End2EndNet_10(nn.Module):
         x5 = self.relu5(self.bn5(self.tconv5(x4)))
         x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
         x7 = self.relu7(self.bn7(self.tconv7(x6)))
-        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
-        x9 = self.relu9(self.bn9(self.tconv9(x8)))
-        x10 = self.tconv10(x9)
-        out = x10[:, :, self.P:]
+        x8 = self.tconv8(x7)
+        out = x8[:, :, self.P:]
 
         return out
 
 
-class End2EndNet_12(nn.Module):
+class End2EndNet_8_large(nn.Module):
     def __init__(self, past_state_length, future_state_length):
         # Final End2EndNet design with fewer layers, fewer channels, no dropout,
         # and control inputs at the front of the network
@@ -332,7 +281,58 @@ class End2EndNet_12(nn.Module):
         # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
         # Output: Time series of future truncated robot state (bs x 6 x F)
 
-        super(End2EndNet_12, self).__init__()
+        super(End2EndNet_8_large, self).__init__()
+        K = 5
+        dilations = [1, 2, 4, 8]
+        self.P = past_state_length
+        self.F = future_state_length
+
+        self.tconv1 = TConvBlock(16, 16, K, dilations)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(16, 32, K, dilations)
+        self.bn2 = torch.nn.BatchNorm1d(32)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(32, 64, K, dilations)
+        self.bn3 = torch.nn.BatchNorm1d(64)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(64, 64, K, dilations)
+        self.bn4 = torch.nn.BatchNorm1d(64)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(64, 128, K, dilations)
+        self.bn5 = torch.nn.BatchNorm1d(128)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(128, 128, K, dilations)
+        self.bn6 = torch.nn.BatchNorm1d(128)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(128, 128, K, dilations)
+        self.bn7 = torch.nn.BatchNorm1d(128)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(128, 6, K, dilations)
+
+    def forward(self, input):
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = self.tconv8(x7)
+        out = x8[:, :, self.P:]
+
+        return out
+
+
+class End2EndNet_12_small(nn.Module):
+    def __init__(self, past_state_length, future_state_length):
+        # Final End2EndNet design with fewer layers, fewer channels, no dropout,
+        # and control inputs at the front of the network
+
+        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
+        # Output: Time series of future truncated robot state (bs x 6 x F)
+
+        super(End2EndNet_12_small, self).__init__()
         K = 5
         dilations = [1, 2, 4, 8]
         self.P = past_state_length
@@ -372,6 +372,140 @@ class End2EndNet_12(nn.Module):
         self.bn11 = torch.nn.BatchNorm1d(32)
         self.relu11 = torch.nn.ReLU()
         self.tconv12 = TConvBlock(32, 6, K, dilations)
+
+    def forward(self, input):
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
+        x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
+        x11 = self.relu11(self.bn11(self.tconv11(x10)))
+        x12 = self.tconv12(x11)
+        out = x12[:, :, self.P:]
+
+        return out
+
+
+class End2EndNet_12_med(nn.Module):
+    def __init__(self, past_state_length, future_state_length):
+        # Final End2EndNet design with fewer layers, fewer channels, no dropout,
+        # and control inputs at the front of the network
+
+        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
+        # Output: Time series of future truncated robot state (bs x 6 x F)
+
+        super(End2EndNet_12_med, self).__init__()
+        K = 5
+        dilations = [1, 2, 4, 8]
+        self.P = past_state_length
+        self.F = future_state_length
+
+        self.tconv1 = TConvBlock(16, 16, K, dilations)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(16, 16, K, dilations)
+        self.bn2 = torch.nn.BatchNorm1d(16)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(16, 32, K, dilations)
+        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(32, 32, K, dilations)
+        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(32, 32, K, dilations)
+        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(32, 64, K, dilations)
+        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(64, 64, K, dilations)
+        self.bn7 = torch.nn.BatchNorm1d(64)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(64, 64, K, dilations)
+        self.bn8 = torch.nn.BatchNorm1d(64)
+        self.relu8 = torch.nn.ReLU()
+        self.tconv9 = TConvBlock(64, 64, K, dilations)
+        self.bn9 = torch.nn.BatchNorm1d(64)
+        self.relu9 = torch.nn.ReLU()
+        self.tconv10 = TConvBlock(64, 64, K, dilations)
+        self.bn10 = torch.nn.BatchNorm1d(64)
+        self.relu10 = torch.nn.ReLU()
+        self.tconv11 = TConvBlock(64, 128, K, dilations)
+        self.bn11 = torch.nn.BatchNorm1d(128)
+        self.relu11 = torch.nn.ReLU()
+        self.tconv12 = TConvBlock(128, 6, K, dilations)
+
+    def forward(self, input):
+        x1 = self.relu1(self.bn1(self.tconv1(input)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
+        x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
+        x11 = self.relu11(self.bn11(self.tconv11(x10)))
+        x12 = self.tconv12(x11)
+        out = x12[:, :, self.P:]
+
+        return out
+
+
+class End2EndNet_12_large(nn.Module):
+    def __init__(self, past_state_length, future_state_length):
+        # Final End2EndNet design with fewer layers, fewer channels, no dropout,
+        # and control inputs at the front of the network
+
+        # Input: Time series of past robot state, past control input, and future control input (bs x 16 x (P+F))
+        # Output: Time series of future truncated robot state (bs x 6 x F)
+
+        super(End2EndNet_12_large, self).__init__()
+        K = 5
+        dilations = [1, 2, 4, 8]
+        self.P = past_state_length
+        self.F = future_state_length
+
+        self.tconv1 = TConvBlock(16, 16, K, dilations)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.relu1 = torch.nn.ReLU()
+        self.tconv2 = TConvBlock(16, 16, K, dilations)
+        self.bn2 = torch.nn.BatchNorm1d(16)
+        self.relu2 = torch.nn.ReLU()
+        self.tconv3 = TConvBlock(16, 32, K, dilations)
+        self.bn3 = torch.nn.BatchNorm1d(32)
+        self.relu3 = torch.nn.ReLU()
+        self.tconv4 = TConvBlock(32, 32, K, dilations)
+        self.bn4 = torch.nn.BatchNorm1d(32)
+        self.relu4 = torch.nn.ReLU()
+        self.tconv5 = TConvBlock(32, 32, K, dilations)
+        self.bn5 = torch.nn.BatchNorm1d(32)
+        self.relu5 = torch.nn.ReLU()
+        self.tconv6 = TConvBlock(32, 64, K, dilations)
+        self.bn6 = torch.nn.BatchNorm1d(64)
+        self.relu6 = torch.nn.ReLU()
+        self.tconv7 = TConvBlock(64, 64, K, dilations)
+        self.bn7 = torch.nn.BatchNorm1d(64)
+        self.relu7 = torch.nn.ReLU()
+        self.tconv8 = TConvBlock(64, 64, K, dilations)
+        self.bn8 = torch.nn.BatchNorm1d(64)
+        self.relu8 = torch.nn.ReLU()
+        self.tconv9 = TConvBlock(64, 128, K, dilations)
+        self.bn9 = torch.nn.BatchNorm1d(128)
+        self.relu9 = torch.nn.ReLU()
+        self.tconv10 = TConvBlock(128, 128, K, dilations)
+        self.bn10 = torch.nn.BatchNorm1d(128)
+        self.relu10 = torch.nn.ReLU()
+        self.tconv11 = TConvBlock(128, 128, K, dilations)
+        self.bn11 = torch.nn.BatchNorm1d(128)
+        self.relu11 = torch.nn.ReLU()
+        self.tconv12 = TConvBlock(128, 6, K, dilations)
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
@@ -522,31 +656,39 @@ if __name__ == "__main__":
     print("Data Loaded Successfully")
 
     # Run main training loop
-    net = End2EndNet_3(P, F).to(device)
+    net = End2EndNet_4_small(P, F).to(device)
     torchsummary.summary(net,  (16, P+F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_3layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
 
-    net = End2EndNet_4(P, F).to(device)
+    net = End2EndNet_4_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_med")
 
-    net = End2EndNet_5(P, F).to(device)
+    net = End2EndNet_4_large(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_5layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_large")
 
-    net = End2EndNet_6(P, F).to(device)
-    torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_6layer")
+    net = End2EndNet_8_small(P, F).to(device)
+    torchsummary.summary(net,  (16, P+F))
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_small")
 
-    net = End2EndNet_8(P, F).to(device)
+    net = End2EndNet_8_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_med")
 
-    net = End2EndNet_10(P, F).to(device)
+    net = End2EndNet_8_large(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_10layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_8layer_large")
 
-    net = End2EndNet_12(P, F).to(device)
+    net = End2EndNet_12_small(P, F).to(device)
+    torchsummary.summary(net,  (16, P+F))
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_4layer_small")
+
+    net = End2EndNet_12_med(P, F).to(device)
     torchsummary.summary(net, (16, P + F))
-    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer")
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_med")
+
+    net = End2EndNet_12_large(P, F).to(device)
+    torchsummary.summary(net, (16, P + F))
+    train_model(loss, net, train_loader, val_loader, device, bs, epochs, lr, wd, train_len, val_len, "End2End_12layer_large")
 

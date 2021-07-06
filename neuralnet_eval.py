@@ -138,13 +138,6 @@ if __name__ == "__main__":
         print("CPU")
 
     # Main Evaluation Loop
-    name = "End2End_3layer"
-    model = End2EndNet_3(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
-    model.train(False)
-    model.eval()
-    conv_test(val_loader, loss, model, F, name, device)
-
     name = "End2End_4layer"
     model = End2EndNet_4(P, F)
     model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
