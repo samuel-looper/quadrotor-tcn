@@ -253,12 +253,12 @@ class End2EndNet_8(nn.Module):
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = x2 + self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = x6 + self.relu7(self.bn7(self.tconv7(x6)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
         x8 = self.tconv8(x7)
         out = x8[:, :, self.P:]
 
@@ -310,14 +310,14 @@ class End2EndNet_10(nn.Module):
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = x2 + self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = x6 + self.relu7(self.bn7(self.tconv7(x6)))
-        x8 = self.relu8(self.bn8(self.tconv8(x7)))
-        x9 = x8 + self.relu9(self.bn9(self.tconv9(x8)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
         x10 = self.tconv10(x9)
         out = x10[:, :, self.P:]
 
@@ -375,16 +375,16 @@ class End2EndNet_12(nn.Module):
 
     def forward(self, input):
         x1 = self.relu1(self.bn1(self.tconv1(input)))
-        x2 = self.relu2(self.bn2(self.tconv2(x1)))
-        x3 = x2 + self.relu3(self.bn3(self.tconv3(x2)))
-        x4 = self.relu4(self.bn4(self.tconv4(x3)))
-        x5 = x4 + self.relu5(self.bn5(self.tconv5(x4)))
-        x6 = self.relu6(self.bn6(self.tconv6(x5)))
-        x7 = x6 + self.relu7(self.bn7(self.tconv7(x6)))
-        x8 = self.relu8(self.bn8(self.tconv8(x7)))
-        x9 = x8 + self.relu9(self.bn9(self.tconv9(x8)))
-        x10 = self.relu10(self.bn10(self.tconv10(x9)))
-        x11 = x10 + self.relu11(self.bn11(self.tconv11(x10)))
+        x2 = x1 + self.relu2(self.bn2(self.tconv2(x1)))
+        x3 = self.relu3(self.bn3(self.tconv3(x2)))
+        x4 = x3 + self.relu4(self.bn4(self.tconv4(x3)))
+        x5 = self.relu5(self.bn5(self.tconv5(x4)))
+        x6 = x5 + self.relu6(self.bn6(self.tconv6(x5)))
+        x7 = self.relu7(self.bn7(self.tconv7(x6)))
+        x8 = x7 + self.relu8(self.bn8(self.tconv8(x7)))
+        x9 = self.relu9(self.bn9(self.tconv9(x8)))
+        x10 = x9 + self.relu10(self.bn10(self.tconv10(x9)))
+        x11 = self.relu11(self.bn11(self.tconv11(x10)))
         x12 = self.tconv12(x11)
         out = x12[:, :, self.P:]
 
