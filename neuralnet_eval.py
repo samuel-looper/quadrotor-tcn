@@ -2,8 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
-from End2EndNet import End2EndNet_3, End2EndNet_4, End2EndNet_5, End2EndNet_6, End2EndNet_8, End2EndNet_10, \
-    End2EndNet_12
+from End2EndNet import End2EndNet_4_small, End2EndNet_4_med, End2EndNet_4_large, End2EndNet_8_small, End2EndNet_8_med, \
+    End2EndNet_8_large, End2EndNet_12_small, End2EndNet_12_med, End2EndNet_12_large
 from HybridTCN import HybridTCN
 from torchdiffeq import odeint
 from data_loader import TestSet, TrainSet
@@ -98,7 +98,7 @@ def conv_test(test_loader, loss, model, pred_steps, name, device):
 
 
 if __name__ == "__main__":
-    in_dir = "C:\\Users\\Samuel Looper\\Desktop\\research\\quadrotor-tcn\\output_data\\new_evals\\network_depth"
+    in_dir = "C:\\Users\\Samuel Looper\\Desktop\\research\\quadrotor-tcn\\output_data\\new_evals\\channel_size"
 
     # Simulation Model Parameters
     l = 0.211  # length (m)
@@ -138,49 +138,68 @@ if __name__ == "__main__":
         print("CPU")
 
     # Main Evaluation Loop
-    name = "End2End_4layer"
-    model = End2EndNet_4(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_4layer_large"
+    model = End2EndNet_4_large(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
-    name = "End2End_5layer"
-    model = End2EndNet_5(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_4layer_med"
+    model = End2EndNet_4_med(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
-    name = "End2End_6layer"
-    model = End2EndNet_6(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_4layer_small"
+    model = End2EndNet_4_small(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
-    name = "End2End_8layer"
-    model = End2EndNet_8(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_8layer_large"
+    model = End2EndNet_8_large(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
-    name = "End2End_10layer"
-    model = End2EndNet_10(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_8layer_med"
+    model = End2EndNet_8_med(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
-    name = "End2End_12layer"
-    model = End2EndNet_12(P, F)
-    model.load_state_dict(torch.load(os.path.join(in_dir, './{}.pth'.format(name)), map_location=device))
+    name = "End2End_8layer_small"
+    model = End2EndNet_8_small(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
     model.train(False)
     model.eval()
     conv_test(val_loader, loss, model, F, name, device)
 
+    name = "End2End_12layer_large"
+    model = End2EndNet_12_large(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
 
+    name = "End2End_12layer_med"
+    model = End2EndNet_12_med(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
+
+    name = "End2End_12layer_small"
+    model = End2EndNet_12_small(P, F)
+    model.load_state_dict(torch.load(os.path.join(in_dir, '{}.pth'.format(name)), map_location=device))
+    model.train(False)
+    model.eval()
+    conv_test(val_loader, loss, model, F, name, device)
 
     # name = "MotorHybrid"
     # model = HybridTCN(l, m, d, kt, kr, ixx, iyy, izz, P, device, motor=True, accel_error=False)
